@@ -1,6 +1,5 @@
 package com.asteam.appcollection.p03
 
-
 import android.Manifest
 import android.app.*
 import android.content.*
@@ -36,7 +35,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
 /**
  * Rebuilt Kotlin application #03.
  * Original Dropbox source: جعبه ابزار - دیتابیس - همه کارها.txt
@@ -60,44 +58,81 @@ class MainActivity : BaseDemoActivity() {
     /** Adds the interactive controls for this specific sample. */
     override fun renderDemo(container: LinearLayout) {
         val nameInput = input("نام را وارد کنید")
-                val output = label("هنوز رکوردی نمایش داده نشده است.")
-                val helper = PeopleDb(this)
-                container.addView(nameInput)
-                container.addView(button("افزودن") {
-                    val value = nameInput.text.toString().trim()
-                    if (value.isNotEmpty()) helper.insertName(value)
-                    output.text = helper.readNames().joinToString(prefix = "رکوردها:
-        ", separator = "
-        ")
-                    nameInput.text.clear()
-                })
-                container.addView(button("تغییر اولین رکورد به مقدار واردشده") {
-                    val value = nameInput.text.toString().trim()
-                    if (value.isNotEmpty()) helper.updateFirst(value)
-                    output.text = helper.readNames().joinToString(prefix = "رکوردها:
-        ", separator = "
-        ")
-                })
-                container.addView(button("حذف همه") {
-                    helper.clearAll()
-                    output.text = "دیتابیس خالی شد."
-                })
-                container.addView(output)
+        val output = label("هنوز رکوردی نمایش داده نشده است.")
+        val helper = PeopleDb(this)
+
+        container.addView(nameInput)
+        container.addView(button("افزودن") {
+            val value = nameInput.text.toString().trim()
+            if (value.isNotEmpty()) {
+                helper.insertName(value)
+            }
+            output.text = helper.readNames().joinToString(
+                prefix = "رکوردها:\n",
+                separator = "\n"
+            )
+            nameInput.text.clear()
+        })
+
+        container.addView(button("تغییر اولین رکورد به مقدار واردشده") {
+            val value = nameInput.text.toString().trim()
+            if (value.isNotEmpty()) {
+                helper.updateFirst(value)
+            }
+            output.text = helper.readNames().joinToString(
+                prefix = "رکوردها:\n",
+                separator = "\n"
+            )
+        })
+
+        container.addView(button("حذف همه") {
+            helper.clearAll()
+            output.text = "دیتابیس خالی شد."
+        })
+        container.addView(output)
     }
 
     /** Minimal SQLiteOpenHelper keeping the original CRUD idea but fixing resource handling. */
     private class PeopleDb(context: Context) : SQLiteOpenHelper(context, "people.db", null, 1) {
         override fun onCreate(db: SQLiteDatabase) {
-            db.execSQL("CREATE TABLE people(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)")
+            db.execSQL(
+                "CREATE TABLE people(" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "name TEXT NOT NULL" +
+                    ")"
+            )
         }
+
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
-        fun insertName(name: String) = writableDatabase.execSQL("INSERT INTO people(name) VALUES(?)", arrayOf(name))
-        fun updateFirst(name: String) = writableDatabase.execSQL("UPDATE people SET name=? WHERE id=(SELECT id FROM people ORDER BY id LIMIT 1)", arrayOf(name))
-        fun clearAll() = writableDatabase.execSQL("DELETE FROM people")
+
+        fun insertName(name: String) {
+            writableDatabase.execSQL(
+                "INSERT INTO people(name) VALUES(?)",
+                arrayOf(name)
+            )
+        }
+
+        fun updateFirst(name: String) {
+            writableDatabase.execSQL(
+                "UPDATE people SET name=? " +
+                    "WHERE id=(SELECT id FROM people ORDER BY id LIMIT 1)",
+                arrayOf(name)
+            )
+        }
+
+        fun clearAll() {
+            writableDatabase.execSQL("DELETE FROM people")
+        }
+
         fun readNames(): List<String> {
             val result = mutableListOf<String>()
-            readableDatabase.rawQuery("SELECT name FROM people ORDER BY id", null).use { cursor ->
-                while (cursor.moveToNext()) result += cursor.getString(0)
+            readableDatabase.rawQuery(
+                "SELECT name FROM people ORDER BY id",
+                null
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    result += cursor.getString(0)
+                }
             }
             return result
         }
