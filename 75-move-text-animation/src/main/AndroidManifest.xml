@@ -1,0 +1,20 @@
+<!-- Modern manifest generated for the rebuilt Android sample. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Application metadata intentionally avoids exposing implementation details in the UI. -->
+    <application
+        android:allowBackup="true"
+        android:label="Move Text Animation"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- Launcher activity must be exported because it owns an intent-filter on Android 12+. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

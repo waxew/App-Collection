@@ -1,0 +1,2 @@
+<!-- Shared library manifest. The library declares no exported Android component. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
