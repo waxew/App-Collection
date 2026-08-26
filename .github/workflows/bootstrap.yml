@@ -1,0 +1,66 @@
+# Generates the complete 78-project Kotlin Android collection from the checked-in catalog and generator payload.
+name: Bootstrap 78 Android Projects
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "specs.py"
+      - "bootstrap/generate.part*"
+      - ".github/workflows/bootstrap.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Reconstruct and validate generator
+        shell: bash
+        run: |
+          cat bootstrap/generate.part* | base64 -d | gzip -d > generate.py
+          python3 -m py_compile generate.py specs.py
+          python3 - <<'PY'
+          from specs import specs
+          assert len(specs) == 78
+          assert len({row[1] for row in specs}) == 78
+          assert [row[0] for row in specs] == list(range(1, 79))
+          print("Catalog validated: 78 unique source files, priorities 1..78")
+          PY
+
+      - name: Generate Kotlin Android projects
+        run: python3 generate.py
+
+      - name: Validate generated project structure
+        shell: bash
+        run: |
+          test "$(find . -maxdepth 1 -type d -name '[0-9][0-9]-*' | wc -l)" -eq 78
+          test "$(find . -path '*/src/main/java/*/MainActivity.kt' | wc -l)" -eq 78
+          test "$(grep -c '^include(\":p' settings.gradle.kts)" -eq 78
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          manifests = list(Path('.').glob('*/src/main/AndroidManifest.xml'))
+          assert len(manifests) == 79, len(manifests)
+          for path in manifests:
+              ET.parse(path)
+          print("Generated structure validated: 78 apps + shared-ui")
+          PY
+
+      - name: Commit generated sources
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Generated tree is already current."
+            exit 0
+          fi
+          git commit -m "Generate 78 modern Kotlin Android projects"
+          git push
