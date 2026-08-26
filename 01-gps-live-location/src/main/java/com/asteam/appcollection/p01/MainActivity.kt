@@ -1,6 +1,5 @@
 package com.asteam.appcollection.p01
 
-
 import android.Manifest
 import android.app.*
 import android.content.*
@@ -36,7 +35,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
 /**
  * Rebuilt Kotlin application #01.
  * Original Dropbox source: gps - Java.txt
@@ -63,7 +61,13 @@ class MainActivity : BaseDemoActivity() {
         container.addView(output)
         container.addView(button("دریافت موقعیت زنده") {
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 501)
+                requestPermissions(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ),
+                    501
+                )
             } else {
                 startLocationUpdates(output)
             }
@@ -74,27 +78,40 @@ class MainActivity : BaseDemoActivity() {
     }
 
     /** Starts GPS updates after runtime permission has been granted. */
-        private fun startLocationUpdates(output: TextView) {
-            val manager = getSystemService(LOCATION_SERVICE) as LocationManager
-            if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                output.text = "GPS خاموش است؛ ابتدا آن را از تنظیمات روشن کنید."
-                return
-            }
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
-            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2_000L, 1f, object : LocationListener {
-                override fun onLocationChanged(location: Location) {
-                    output.text = "Latitude: ${location.latitude}
-    Longitude: ${location.longitude}
-    Accuracy: ${location.accuracy} m"
-                }
-            })
+    private fun startLocationUpdates(output: TextView) {
+        val manager = getSystemService(LOCATION_SERVICE) as LocationManager
+        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            output.text = "GPS خاموش است؛ ابتدا آن را از تنظیمات روشن کنید."
+            return
         }
 
-        /** Continues the requested action immediately after permission approval. */
-        override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-            if (requestCode == 501 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
-                showInfo("GPS", "مجوز موقعیت صادر شد. دوباره دکمه دریافت موقعیت را بزنید.")
-            }
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return
         }
+
+        manager.requestLocationUpdates(
+            LocationManager.GPS_PROVIDER,
+            2_000L,
+            1f,
+            object : LocationListener {
+                override fun onLocationChanged(location: Location) {
+                    output.text = "Latitude: ${location.latitude}\n" +
+                        "Longitude: ${location.longitude}\n" +
+                        "Accuracy: ${location.accuracy} m"
+                }
+            }
+        )
+    }
+
+    /** Continues the requested action immediately after permission approval. */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 501 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            showInfo("GPS", "مجوز موقعیت صادر شد. دوباره دکمه دریافت موقعیت را بزنید.")
+        }
+    }
 }
