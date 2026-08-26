@@ -1,5 +1,5 @@
 # Generates the complete 78-project Kotlin Android collection from the checked-in catalog and generator payload.
-# Bootstrap revision 3: use stable Android 16 / API 36 for reliable CI builds.
+# Bootstrap revision 4: stable API 36; workflow files are preserved outside generated commits.
 name: Bootstrap 78 Android Projects
 
 on:
@@ -37,7 +37,12 @@ jobs:
           PY
 
       - name: Generate Kotlin Android projects
-        run: python3 generate.py
+        shell: bash
+        run: |
+          python3 generate.py
+          # The generator contains a portable default build workflow, but workflow files are managed manually.
+          # Restore the checked-in workflow so GITHUB_TOKEN never attempts to modify workflow definitions.
+          git checkout -- .github/workflows/build-apks.yml
 
       - name: Validate generated project structure
         shell: bash
