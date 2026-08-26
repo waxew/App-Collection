@@ -1,5 +1,5 @@
 # Generates the complete 78-project Kotlin Android collection from the checked-in catalog and generator payload.
-# Bootstrap revision 2: APK workflow now exists, so generated sources can be pushed safely.
+# Bootstrap revision 3: use stable Android 16 / API 36 for reliable CI builds.
 name: Bootstrap 78 Android Projects
 
 on:
@@ -25,6 +25,8 @@ jobs:
         shell: bash
         run: |
           cat bootstrap/generate.part* | base64 -d | gzip -d > generate.py
+          # Android 17 / API 37 is still a preview SDK in this environment. Use stable API 36.
+          sed -i 's/compileSdk = 37/compileSdk = 36/g; s/targetSdk = 37/targetSdk = 36/g; s/compileSdk \/ targetSdk: 37/compileSdk \/ targetSdk: 36/g' generate.py
           python3 -m py_compile generate.py specs.py
           python3 - <<'PY'
           from specs import specs
@@ -43,6 +45,7 @@ jobs:
           test "$(find . -maxdepth 1 -type d -name '[0-9][0-9]-*' | wc -l)" -eq 78
           test "$(find . -path '*/src/main/java/*/MainActivity.kt' | wc -l)" -eq 78
           test "$(grep -c '^include(\":p' settings.gradle.kts)" -eq 78
+          ! grep -R 'compileSdk = 37\|targetSdk = 37' --include='*.kts' .
           python3 - <<'PY'
           from pathlib import Path
           import xml.etree.ElementTree as ET
@@ -50,7 +53,7 @@ jobs:
           assert len(manifests) == 79, len(manifests)
           for path in manifests:
               ET.parse(path)
-          print("Generated structure validated: 78 apps + shared-ui")
+          print("Generated structure validated: 78 apps + shared-ui on API 36")
           PY
 
       - name: Commit generated sources
@@ -63,5 +66,5 @@ jobs:
             echo "Generated tree is already current."
             exit 0
           fi
-          git commit -m "Generate 78 modern Kotlin Android projects"
+          git commit -m "Regenerate 78 Kotlin apps on stable Android API 36"
           git push
