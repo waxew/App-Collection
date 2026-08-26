@@ -1,6 +1,5 @@
 package com.asteam.appcollection.p08
 
-
 import android.Manifest
 import android.app.*
 import android.content.*
@@ -36,61 +35,107 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
 /**
  * Rebuilt Kotlin application #08.
  * Original Dropbox source: backgrounds service.txt
  * Classification: بازسازی ارزشمند
  *
- * The old Java/XML idea is preserved, while deprecated APIs and missing validation/lifecycle
- * handling are replaced with Android-compatible implementations for the current toolchain.
+ * The unrestricted 2017 background Service pattern is replaced with a foreground service.
+ * Android 8+ starts it with startForegroundService(), while older supported Android versions
+ * use startService() so the same APK remains compatible down to this project's minSdk.
  */
 @Suppress("DEPRECATION")
 class MainActivity : BaseDemoActivity() {
 
-    /** Visible title used by the shared app shell. */
     override val demoTitle: String = "Foreground Service"
-
-    /** Short user-facing explanation of the rebuilt sample. */
     override val demoDescription: String = "سرویس پس‌زمینه مدرن"
-
-    /** Keeps traceability to the original 2017 text file. */
     override val sourceReference: String = "backgrounds service.txt"
 
-    /** Adds the interactive controls for this specific sample. */
+    /** Adds controls for starting and stopping the modern foreground service. */
     override fun renderDemo(container: LinearLayout) {
         val status = label("سرویس متوقف است.")
         container.addView(status)
+
         container.addView(button("شروع سرویس Foreground") {
-            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 503)
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    503
+                )
             }
-            startForegroundService(Intent(this, DemoForegroundService::class.java))
+
+            val serviceIntent = Intent(this, DemoForegroundService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
             status.text = "سرویس اجرا شد."
         })
+
         container.addView(button("توقف سرویس") {
             stopService(Intent(this, DemoForegroundService::class.java))
             status.text = "سرویس متوقف شد."
         })
     }
+}
 
+/**
+ * Foreground service replacing the old unrestricted background-service example.
+ * The service is private to this application and immediately publishes its foreground notice.
+ */
+class DemoForegroundService : Service() {
+
+    private companion object {
+        const val CHANNEL_ID = "demo_service"
+        const val NOTIFICATION_ID = 8
     }
 
-    /** Foreground service replacing the unrestricted background service pattern used by old Android. */
-    class DemoForegroundService : Service() {
-        override fun onCreate() {
-            super.onCreate()
-            val channelId = "demo_service"
-            if (Build.VERSION.SDK_INT >= 26) {
-                val channel = NotificationChannel(channelId, "Demo service", NotificationManager.IMPORTANCE_LOW)
-                getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-            }
-            val notification = if (Build.VERSION.SDK_INT >= 26) {
-                Notification.Builder(this, channelId).setContentTitle("سرویس نمونه فعال است").setSmallIcon(android.R.drawable.ic_media_play).build()
-            } else {
-                @Suppress("DEPRECATION") Notification.Builder(this).setContentTitle("سرویس نمونه فعال است").setSmallIcon(android.R.drawable.ic_media_play).build()
-            }
-            startForeground(8, notification)
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannelIfNeeded()
+        startForeground(NOTIFICATION_ID, buildNotification())
+    }
+
+    /** This sample has no bound API, so binding is deliberately unsupported. */
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    /** Avoids recreating background work automatically after the user/app stops the service. */
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return START_NOT_STICKY
+    }
+
+    /** Notification channels are mandatory from Android 8 onward. */
+    private fun createNotificationChannelIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Demo service",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            getSystemService(NotificationManager::class.java)
+                .createNotificationChannel(channel)
         }
-        override fun onBind(intent: Intent?) = null
+    }
+
+    /** Builds the persistent foreground notification using the API appropriate for the OS. */
+    @Suppress("DEPRECATION")
+    private fun buildNotification(): Notification {
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, CHANNEL_ID)
+        } else {
+            Notification.Builder(this)
+        }
+
+        return builder
+            .setContentTitle("سرویس نمونه فعال است")
+            .setContentText("نمونه‌ی سرویس پس‌زمینه مدرن در حال اجراست")
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setOngoing(true)
+            .build()
+    }
 }
