@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.asteam.appcollection.sharedui"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 23

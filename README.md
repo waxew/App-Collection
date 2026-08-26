@@ -11,7 +11,7 @@
 ## ابزار ساخت
 
 - Android Gradle Plugin: 9.3.0
-- compileSdk / targetSdk: 37
+- compileSdk / targetSdk: 36
 - minSdk: 23
 - Kotlin: built-in Kotlin support in AGP 9.x
 - Gradle مورد نیاز: 9.5.0 یا جدیدتر سازگار با AGP 9.3

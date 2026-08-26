@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.asteam.appcollection.p18"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.asteam.appcollection.p18"
         minSdk = 23
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
     }
