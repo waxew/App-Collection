@@ -1,4 +1,5 @@
 # Generates the complete 78-project Kotlin Android collection from the checked-in catalog and generator payload.
+# Bootstrap revision 1: triggers generation after all payload parts are present.
 name: Bootstrap 78 Android Projects
 
 on:
