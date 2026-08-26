@@ -1,4 +1,5 @@
 # Build all 78 APKs whenever source is pushed to main.
+# Build revision 2: source generation is complete; this revision validates the published tree.
 name: Build 78 Android APKs
 
 on:
@@ -16,6 +17,12 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Verify generated sources exist
+        shell: bash
+        run: |
+          test "$(find . -maxdepth 1 -type d -name '[0-9][0-9]-*' | wc -l)" -eq 78
+          test -f settings.gradle.kts
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
