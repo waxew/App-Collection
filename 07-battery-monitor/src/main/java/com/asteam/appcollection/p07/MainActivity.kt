@@ -1,6 +1,5 @@
 package com.asteam.appcollection.p07
 
-
 import android.Manifest
 import android.app.*
 import android.content.*
@@ -36,7 +35,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
 /**
  * Rebuilt Kotlin application #07.
  * Original Dropbox source: جعبه ابزار - نمایش شارژ باتری.txt
@@ -60,20 +58,33 @@ class MainActivity : BaseDemoActivity() {
     /** Adds the interactive controls for this specific sample. */
     override fun renderDemo(container: LinearLayout) {
         val output = label()
-                fun refresh() {
-                    val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-                    val level = battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-                    val scale = battery?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
-                    val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-                    val percent = if (level >= 0) (level * 100f / scale) else 0f
-                    val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
-                    output.text = "شارژ: %.1f%%
-        در حال شارژ: %s".format(percent, if (charging) "بله" else "خیر")
-                }
-                container.addView(output)
-                container.addView(button("بروزرسانی وضعیت") { refresh() })
-                refresh()
+
+        /** Reads the latest sticky battery broadcast and refreshes the visible status. */
+        fun refresh() {
+            val battery = registerReceiver(
+                null,
+                IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            )
+            val level = battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = battery?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+            val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+            val percent = if (level >= 0 && scale > 0) {
+                level * 100f / scale
+            } else {
+                0f
+            }
+            val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL
+
+            output.text = "شارژ: %.1f%%\nدر حال شارژ: %s".format(
+                Locale.getDefault(),
+                percent,
+                if (charging) "بله" else "خیر"
+            )
+        }
+
+        container.addView(output)
+        container.addView(button("بروزرسانی وضعیت") { refresh() })
+        refresh()
     }
-
-
 }
