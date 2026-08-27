@@ -1,11 +1,18 @@
 <!-- Standalone APK used only to validate the shared professional drawer prototype. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Internet is required only for the explicit "check latest version" action. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Android 13+ asks this permission only if an actual update notification must be shown. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:label="AS Team Drawer Demo"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <!-- One-activity test app: all drawer/contact states are rendered inside MainActivity. -->
+        <!-- One-activity test app: all drawer/settings/about states are rendered inside MainActivity. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
