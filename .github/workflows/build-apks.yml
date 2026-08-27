@@ -1,10 +1,11 @@
 # Build and validate all 78 Android applications.
 #
-# Important signing rule:
+# Important signing and update rules:
 # - Debug APKs are development/test artifacts only.
 # - Release APKs produced here are intentionally UNSIGNED.
 # - The private release signing key must never be committed to this public repository.
-# - Final distributable APKs are signed separately with the project's stable release key.
+# - Final distributable APKs must always be signed with the SAME stable release key.
+# - CI injects a monotonically increasing versionCode so newer builds are recognized as updates.
 name: Build 78 Android APKs
 
 on:
@@ -54,13 +55,21 @@ jobs:
         with:
           gradle-version: '9.5.0'
 
-      # Build both variants. Release remains unsigned because the production key is private
-      # and must not be stored in a public GitHub repository.
-      - name: Build debug and unsigned release APKs
-        run: gradle assembleDebug assembleRelease --no-daemon --stacktrace
+      # GitHub run numbers increase on every run and therefore give Android a newer package version.
+      # The +1000 offset keeps these CI-produced packages clearly above the original versionCode=1 builds.
+      - name: Calculate monotonic Android versionCode
+        shell: bash
+        run: |
+          VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
+          echo "ANDROID_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "Using Android versionCode=$VERSION_CODE"
 
-      # Verify every debug APK with Android's official apksigner tool. This confirms that the
-      # generated APK containers and their development signatures are structurally valid.
+      # Build both variants with the same increasing versionCode.
+      # Release remains unsigned because the production key is private and must not live in GitHub.
+      - name: Build debug and unsigned release APKs
+        run: gradle assembleDebug assembleRelease -PreleaseVersionCode="$ANDROID_VERSION_CODE" --no-daemon --stacktrace
+
+      # Verify every debug APK with Android's official apksigner tool. Debug remains QA-only.
       - name: Verify all debug APK signatures
         shell: bash
         run: |
@@ -84,15 +93,15 @@ jobs:
           for module in [0-9][0-9]-*; do
             apk=$(find "$module/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' | head -n 1)
             if [ -n "$apk" ] && [ -f "$apk" ]; then
-              cp "$apk" "apk-debug-output/$module-debug.apk"
+              cp "$apk" "apk-debug-output/$module-debug-vc$ANDROID_VERSION_CODE.apk"
             fi
           done
           count=$(find apk-debug-output -name '*.apk' | wc -l)
           echo "Collected $count debug APKs"
           test "$count" -eq 78
 
-      # Collect the release variants before production signing. A separate signing stage outside
-      # this public repository will apply the stable App-Collection release certificate.
+      # Collect release variants before production signing. They carry the newer versionCode but
+      # become installable update packages only after signing with the SAME stable production key.
       - name: Collect unsigned release APKs
         shell: bash
         run: |
@@ -100,33 +109,31 @@ jobs:
           for module in [0-9][0-9]-*; do
             apk=$(find "$module/build/outputs/apk/release" -maxdepth 1 -name '*-unsigned.apk' | head -n 1)
             if [ -n "$apk" ] && [ -f "$apk" ]; then
-              cp "$apk" "apk-release-unsigned-output/$module-release-unsigned.apk"
+              cp "$apk" "apk-release-unsigned-output/$module-release-vc$ANDROID_VERSION_CODE-unsigned.apk"
             fi
           done
           count=$(find apk-release-unsigned-output -name '*.apk' | wc -l)
           echo "Collected $count unsigned release APKs"
           test "$count" -eq 78
 
-      # Keep the development artifacts clearly labelled so they cannot be confused with the
-      # production-signed packages intended for users.
+      # Keep the development artifacts clearly labelled so they cannot be confused with production.
       - name: Upload debug test APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-collection-78-debug-test-apks
+          name: app-collection-78-debug-test-apks-vc${{ env.ANDROID_VERSION_CODE }}
           path: apk-debug-output/*.apk
           if-no-files-found: error
 
-      # Upload unsigned release APKs for the private signing stage.
+      # Upload unsigned release APKs for the private stable-signing stage.
       - name: Upload unsigned release APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-collection-78-release-unsigned-apks
+          name: app-collection-78-release-unsigned-apks-vc${{ env.ANDROID_VERSION_CODE }}
           path: apk-release-unsigned-output/*.apk
           if-no-files-found: error
 
       # Export only the official signing utilities needed by the private local signing step.
-      # No private key or password is included in this artifact. zipalign is a native executable,
-      # so its libc++ runtime is exported too; otherwise it cannot run outside the hosted runner.
+      # No private key or password is included in this artifact.
       - name: Prepare Android signing tools
         shell: bash
         run: |
