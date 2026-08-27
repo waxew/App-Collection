@@ -1,14 +1,8 @@
-# Generates the complete 78-project Kotlin Android collection from the checked-in catalog and generator payload.
-# Bootstrap revision 4: stable API 36; workflow files are preserved outside generated commits.
+# Rebuilds the 78-project Kotlin collection on demand from the retained generator payload.
+# It is manual-only so ordinary source edits never overwrite reviewed project files.
 name: Bootstrap 78 Android Projects
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "specs.py"
-      - "bootstrap/generate.part*"
-      - ".github/workflows/bootstrap.yml"
   workflow_dispatch:
 
 permissions:
@@ -21,12 +15,52 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Reconstruct and validate generator
+      - name: Reconstruct and harden generator
         shell: bash
         run: |
           cat bootstrap/generate.part* | base64 -d | gzip -d > generate.py
-          # Android 17 / API 37 is still a preview SDK in this environment. Use stable API 36.
+
+          # Keep the generated collection on the stable Android 16 / API 36 SDK.
           sed -i 's/compileSdk = 37/compileSdk = 36/g; s/targetSdk = 37/targetSdk = 36/g; s/compileSdk \/ targetSdk: 37/compileSdk \/ targetSdk: 36/g' generate.py
+
+          # The retained 2017-to-Kotlin generator contains three Python triple-quoted blocks
+          # whose Kotlin "\\n" sequences must stay literal. Convert only those blocks to raw
+          # Python strings so a future regeneration cannot reintroduce broken multiline quotes.
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("generate.py")
+          source = path.read_text(encoding="utf-8")
+
+          def make_raw(start_marker: str, end_marker: str, assignment: str) -> None:
+              global source
+              start = source.index(start_marker)
+              end = source.index(end_marker, start)
+              block = source[start:end]
+              old = f"{assignment}'''"
+              new = f"{assignment}r'''"
+              if old not in block:
+                  raise RuntimeError(f"Expected generator assignment not found: {old}")
+              block = block.replace(old, new, 1)
+              source = source[:start] + block + source[end:]
+
+          make_raw("    if kind == 'gps':", "    elif kind == 'flashlight':", "        extras = ")
+          make_raw("    elif kind == 'sqlite':", "    elif kind in ('music','musicui','audiomanifest'):", "        body=")
+          make_raw("    elif kind == 'battery':", "    elif kind == 'service':", "        body=")
+
+          old_start = "            startForegroundService(Intent(this, DemoForegroundService::class.java))"
+          new_start = """            val serviceIntent = Intent(this, DemoForegroundService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }"""
+          if old_start in source:
+              source = source.replace(old_start, new_start, 1)
+
+          path.write_text(source, encoding="utf-8")
+          PY
+
           python3 -m py_compile generate.py specs.py
           python3 - <<'PY'
           from specs import specs
@@ -40,8 +74,7 @@ jobs:
         shell: bash
         run: |
           python3 generate.py
-          # The generator contains a portable default build workflow, but workflow files are managed manually.
-          # Restore the checked-in workflow so GITHUB_TOKEN never attempts to modify workflow definitions.
+          # Build workflow is maintained separately and is never replaced by the generator.
           git checkout -- .github/workflows/build-apks.yml
 
       - name: Validate generated project structure
@@ -51,6 +84,12 @@ jobs:
           test "$(find . -path '*/src/main/java/*/MainActivity.kt' | wc -l)" -eq 78
           test "$(grep -c '^include(\":p' settings.gradle.kts)" -eq 78
           ! grep -R 'compileSdk = 37\|targetSdk = 37' --include='*.kts' .
+
+          # Guard the three escaping bugs fixed during real CI compilation.
+          grep -F 'Latitude: ${location.latitude}\n' 01-gps-live-location/src/main/java/com/asteam/appcollection/p01/MainActivity.kt
+          grep -F 'prefix = "رکوردها:\n"' 03-sqlite-crud/src/main/java/com/asteam/appcollection/p03/MainActivity.kt
+          grep -F 'شارژ: %.1f%%\nدر حال شارژ' 07-battery-monitor/src/main/java/com/asteam/appcollection/p07/MainActivity.kt
+
           python3 - <<'PY'
           from pathlib import Path
           import xml.etree.ElementTree as ET
@@ -71,5 +110,5 @@ jobs:
             echo "Generated tree is already current."
             exit 0
           fi
-          git commit -m "Regenerate 78 Kotlin apps on stable Android API 36"
+          git commit -m "Regenerate 78 Kotlin apps from hardened generator"
           git push
