@@ -1,16 +1,15 @@
-<!-- Modern manifest generated for the rebuilt Android sample. -->
+<!-- Standalone APK used only to validate the shared professional drawer prototype. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <!-- Application metadata intentionally avoids exposing implementation details in the UI. -->
     <application
         android:allowBackup="true"
-        android:label="Share Content"
+        android:label="AS Team Drawer Demo"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <!-- Launcher activity must be exported because it owns an intent-filter on Android 12+. -->
+        <!-- One-activity test app: all drawer/contact states are rendered inside MainActivity. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="unspecified">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
