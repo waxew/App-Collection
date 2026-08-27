@@ -7,7 +7,6 @@ import android.graphics.Color
 import android.graphics.Outline
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -18,7 +17,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 
@@ -59,7 +57,7 @@ class MainActivity : Activity() {
         renderHomePage()
     }
 
-    /** Creates the global app shell: page host, dim layer and drawer anchored to the right. */
+    /** Creates the global app shell: page host, dim layer and drawer anchored to the physical right. */
     private fun buildRootUi() {
         root = FrameLayout(this).apply {
             setBackgroundColor(Color.rgb(246, 248, 251))
@@ -83,7 +81,8 @@ class MainActivity : Activity() {
         drawer = buildDrawer()
         root.addView(
             drawer,
-            FrameLayout.LayoutParams(dp(320), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END)
+            // Gravity.RIGHT is deliberate: END would become the left edge in an RTL parent.
+            FrameLayout.LayoutParams(dp(320), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.RIGHT)
         )
 
         setContentView(root)
@@ -129,7 +128,7 @@ class MainActivity : Activity() {
         scrollContent.addView(imageRow, LinearLayout.LayoutParams(-1, dp(126)))
 
         profileName = TextView(this).apply {
-            text = "♙  ${prefs.getString("profile_name", "کاربر برنامه")}" 
+            text = "👤  ${prefs.getString("profile_name", "کاربر برنامه")}" 
             textSize = 17f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(30, 36, 46))
@@ -180,7 +179,13 @@ class MainActivity : Activity() {
 
         val scroller = ScrollView(this).apply {
             isFillViewport = true
-            addView(scrollContent, ScrollView.LayoutParams(-1, -2))
+            addView(
+                scrollContent,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
         }
         panel.addView(scroller, LinearLayout.LayoutParams(-1, 0, 1f))
         return panel
@@ -262,6 +267,7 @@ class MainActivity : Activity() {
     private fun buildToolbar(titleText: String, showBack: Boolean = false): View {
         val bar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(8), dp(8), dp(8), dp(8))
             setBackgroundColor(Color.WHITE)
@@ -294,6 +300,7 @@ class MainActivity : Activity() {
     private fun drawerRow(icon: String, title: String, onClick: () -> Unit): View {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(10), dp(4), dp(10), dp(4))
             isClickable = true
@@ -402,7 +409,7 @@ class MainActivity : Activity() {
             .setPositiveButton("ذخیره") { _, _ ->
                 val value = editor.text.toString().trim().ifBlank { "کاربر برنامه" }
                 prefs.edit().putString("profile_name", value).apply()
-                profileName.text = "♙  $value"
+                profileName.text = "👤  $value"
             }
             .setNegativeButton("انصراف", null)
             .show()
