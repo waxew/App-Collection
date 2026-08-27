@@ -1,5 +1,10 @@
-# Build all 78 APKs whenever source is pushed to main.
-# Build revision 3: stable Android 16 / API 36.
+# Build and validate all 78 Android applications.
+#
+# Important signing rule:
+# - Debug APKs are development/test artifacts only.
+# - Release APKs produced here are intentionally UNSIGNED.
+# - The private release signing key must never be committed to this public repository.
+# - Final distributable APKs are signed separately with the project's stable release key.
 name: Build 78 Android APKs
 
 on:
@@ -13,11 +18,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+
     steps:
+      # Fetch the complete repository at the commit that triggered this workflow.
       - name: Checkout source
         uses: actions/checkout@v4
 
+      # Guard against an incomplete generated repository or accidental preview-SDK changes.
       - name: Verify generated sources exist
         shell: bash
         run: |
@@ -25,47 +33,111 @@ jobs:
           test -f settings.gradle.kts
           ! grep -R 'compileSdk = 37\|targetSdk = 37' --include='*.kts' .
 
+      # AGP 9.x is run with JDK 17 in CI for deterministic builds.
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      # Install the official Android SDK command-line environment.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      # Android 16 / API 36 is the stable SDK used by all modules in this repository.
       - name: Install stable Android 16 SDK
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
+      # Keep the Gradle version explicit so builds do not depend on the runner image default.
       - name: Set up Gradle 9.5.0
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.0'
 
-      - name: Build all debug APKs
-        run: gradle assembleDebug --no-daemon --stacktrace
+      # Build both variants. Release remains unsigned because the production key is private
+      # and must not be stored in a public GitHub repository.
+      - name: Build debug and unsigned release APKs
+        run: gradle assembleDebug assembleRelease --no-daemon --stacktrace
 
-      - name: Collect APKs with unique names
+      # Verify every debug APK with Android's official apksigner tool. This confirms that the
+      # generated APK containers and their development signatures are structurally valid.
+      - name: Verify all debug APK signatures
         shell: bash
         run: |
-          mkdir -p apk-output
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          checked=0
           for module in [0-9][0-9]-*; do
-            apk="$module/build/outputs/apk/debug/$module-debug.apk"
-            # AGP normally names the APK after the project module; fall back to the first debug APK.
-            if [ ! -f "$apk" ]; then
-              apk=$(find "$module/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' | head -n 1)
-            fi
+            apk=$(find "$module/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' | head -n 1)
+            test -n "$apk"
+            test -f "$apk"
+            "$APKSIGNER" verify --verbose --print-certs "$apk" >/dev/null
+            checked=$((checked + 1))
+          done
+          echo "Verified $checked debug APK signatures"
+          test "$checked" -eq 78
+
+      # Collect debug APKs under predictable names. These are useful for developer QA only.
+      - name: Collect debug APKs
+        shell: bash
+        run: |
+          mkdir -p apk-debug-output
+          for module in [0-9][0-9]-*; do
+            apk=$(find "$module/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' | head -n 1)
             if [ -n "$apk" ] && [ -f "$apk" ]; then
-              cp "$apk" "apk-output/$module.apk"
+              cp "$apk" "apk-debug-output/$module-debug.apk"
             fi
           done
-          count=$(find apk-output -name '*.apk' | wc -l)
-          echo "Collected $count APKs"
+          count=$(find apk-debug-output -name '*.apk' | wc -l)
+          echo "Collected $count debug APKs"
           test "$count" -eq 78
 
-      - name: Upload all APKs
+      # Collect the release variants before production signing. A separate signing stage outside
+      # this public repository will apply the stable App-Collection release certificate.
+      - name: Collect unsigned release APKs
+        shell: bash
+        run: |
+          mkdir -p apk-release-unsigned-output
+          for module in [0-9][0-9]-*; do
+            apk=$(find "$module/build/outputs/apk/release" -maxdepth 1 -name '*-unsigned.apk' | head -n 1)
+            if [ -n "$apk" ] && [ -f "$apk" ]; then
+              cp "$apk" "apk-release-unsigned-output/$module-release-unsigned.apk"
+            fi
+          done
+          count=$(find apk-release-unsigned-output -name '*.apk' | wc -l)
+          echo "Collected $count unsigned release APKs"
+          test "$count" -eq 78
+
+      # Keep the development artifacts clearly labelled so they cannot be confused with the
+      # production-signed packages intended for users.
+      - name: Upload debug test APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-collection-78-apks
-          path: apk-output/*.apk
+          name: app-collection-78-debug-test-apks
+          path: apk-debug-output/*.apk
+          if-no-files-found: error
+
+      # Upload unsigned release APKs for the private signing stage.
+      - name: Upload unsigned release APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-collection-78-release-unsigned-apks
+          path: apk-release-unsigned-output/*.apk
+          if-no-files-found: error
+
+      # Export only the official signing utilities needed by the private local signing step.
+      # No private key or password is included in this artifact.
+      - name: Prepare Android signing tools
+        shell: bash
+        run: |
+          mkdir -p signing-tools/lib
+          cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" signing-tools/
+          cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" signing-tools/
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" signing-tools/lib/
+          chmod +x signing-tools/apksigner signing-tools/zipalign
+
+      - name: Upload Android signing tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-tools-36-signing
+          path: signing-tools
           if-no-files-found: error
