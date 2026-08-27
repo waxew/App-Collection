@@ -1,5 +1,5 @@
-// Application module #11: share-content.
-// The package/applicationId stays stable so future versions can update over the installed APK.
+// Temporary application module used to compile the isolated AS Team drawer prototype on this branch.
+// The package/applicationId remains stable so repeated test APKs can update over the prior install.
 plugins {
     id("com.android.application")
 }
@@ -17,7 +17,7 @@ android {
     }
 }
 
-// Shared shell provides the standard hamburger drawer/settings/about screens.
+// The shared module stays linked so this prototype is compatible with the collection architecture.
 dependencies {
     implementation(project(":shared-ui"))
 }
