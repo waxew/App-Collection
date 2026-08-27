@@ -125,14 +125,18 @@ jobs:
           if-no-files-found: error
 
       # Export only the official signing utilities needed by the private local signing step.
-      # No private key or password is included in this artifact.
+      # No private key or password is included in this artifact. zipalign is a native executable,
+      # so its libc++ runtime is exported too; otherwise it cannot run outside the hosted runner.
       - name: Prepare Android signing tools
         shell: bash
         run: |
-          mkdir -p signing-tools/lib
+          mkdir -p signing-tools/lib signing-tools/lib64
           cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" signing-tools/
           cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" signing-tools/
           cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" signing-tools/lib/
+          LIBCPP=$(find "$ANDROID_HOME/build-tools/36.0.0" -type f -name 'libc++.so' | head -n 1)
+          test -n "$LIBCPP"
+          cp "$LIBCPP" signing-tools/lib64/libc++.so
           chmod +x signing-tools/apksigner signing-tools/zipalign
 
       - name: Upload Android signing tools
