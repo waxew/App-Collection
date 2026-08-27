@@ -1,0 +1,58 @@
+# Builds only the temporary professional Drawer prototype APK.
+name: Build Drawer Demo APK
+
+on:
+  push:
+    branches: [drawer-demo-build]
+    paths:
+      - '11-share-content/**'
+      - 'shared-ui/**'
+      - '.github/workflows/drawer-demo-build.yml'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Set up Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Build prototype debug APK
+        run: gradle :p11:assembleDebug --no-daemon --stacktrace
+
+      - name: Verify APK signature
+        run: |
+          APK=$(find 11-share-content/build/outputs/apk/debug -name '*.apk' | head -n 1)
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+          cp "$APK" AS-Team-Drawer-Demo.apk
+
+      - name: Upload prototype APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AS-Team-Drawer-Demo-APK
+          path: AS-Team-Drawer-Demo.apk
+          if-no-files-found: error
