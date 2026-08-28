@@ -1,0 +1,120 @@
+<!-- Single host application for testing all 78 rebuilt examples from one install. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Union of permissions used by the original examples. Runtime-sensitive permissions
+         are still requested by the individual feature screens when needed. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:label="تست"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <!-- Only this launcher is shown as an installed app icon. -->
+        <activity
+            android:name="com.asteam.appcollection.test.TestLauncherActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name="com.asteam.appcollection.p01.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p02.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p03.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p04.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p05.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p06.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p07.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p08.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p09.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p10.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p11.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p12.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p13.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p14.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p15.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p16.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p17.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p18.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p19.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p20.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p21.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p22.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p23.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p24.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p25.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p26.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p27.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p28.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p29.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p30.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p31.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p32.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p33.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p34.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p35.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p36.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p37.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p38.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p39.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p40.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p41.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p42.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p43.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p44.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p45.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p46.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p47.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p48.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p49.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p50.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p51.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p52.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p53.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p54.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p55.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p56.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p57.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p58.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p59.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p60.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p61.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p62.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p63.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p64.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p65.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p66.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p67.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p68.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p69.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p70.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p71.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p72.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p73.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p74.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p75.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p76.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p77.MainActivity" android:exported="false" />
+        <activity android:name="com.asteam.appcollection.p78.MainActivity" android:exported="false" />
+
+        <!-- Component required by example #08. -->
+        <service
+            android:name="com.asteam.appcollection.p08.DemoForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+    </application>
+</manifest>
