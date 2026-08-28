@@ -41,11 +41,38 @@ jobs:
 
       # Build from the nested standalone host project so the 78 original application modules
       # remain independent reference projects and are not installed separately.
+      # Direct class references in TestLauncherActivity make a missing source fail compilation.
       - name: Build consolidated debug and release APK
         working-directory: test-host
         run: gradle :app:assembleDebug :app:assembleRelease --no-daemon --stacktrace
 
-      - name: Verify debug APK
+      # Structural runtime guard: the first broken host build compiled because only the textual
+      # p01..p78 class names were present. This check inspects all generated DEX files and requires
+      # the real class descriptor for every numbered MainActivity before an artifact is uploaded.
+      - name: Verify all 78 activities are embedded in DEX
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(find test-host/app/build/outputs/apk/debug -name '*.apk' | head -n 1)
+          test -n "$APK"
+          rm -rf /tmp/test-host-dex
+          mkdir -p /tmp/test-host-dex
+          unzip -q "$APK" 'classes*.dex' -d /tmp/test-host-dex
+          strings /tmp/test-host-dex/classes*.dex > /tmp/test-host-dex/all-strings.txt
+
+          missing=0
+          for n in $(seq -w 1 78); do
+            descriptor="Lcom/asteam/appcollection/p${n}/MainActivity;"
+            if ! grep -Fq "$descriptor" /tmp/test-host-dex/all-strings.txt; then
+              echo "ERROR: missing embedded activity p${n}: $descriptor"
+              missing=$((missing + 1))
+            fi
+          done
+
+          echo "Missing embedded activities: $missing"
+          test "$missing" -eq 0
+
+      - name: Verify debug APK signature
         shell: bash
         run: |
           APK=$(find test-host/app/build/outputs/apk/debug -name '*.apk' | head -n 1)
