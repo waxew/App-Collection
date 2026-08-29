@@ -1,0 +1,45 @@
+# Generate the standard Gradle Wrapper files used for reproducible local builds.
+name: Generate Gradle Wrapper
+
+on:
+  # Run once when this workflow is first added/changed and allow future manual regeneration.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/generate-gradle-wrapper.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wrapper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # Wrapper must be generated against this repository's real Gradle settings/build scripts.
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      # Gradle 9.5.0 is the repository's pinned toolchain version.
+      - name: Set up Gradle 9.5.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      # Generate official wrapper scripts, properties and gradle-wrapper.jar.
+      - name: Generate wrapper files
+        run: gradle wrapper --gradle-version 9.5.0 --distribution-type bin --no-daemon
+
+      # The artifact is reviewed/committed separately so this workflow never pushes code by itself.
+      - name: Upload wrapper files
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-wrapper-9.5.0
+          path: |
+            gradlew
+            gradlew.bat
+            gradle/wrapper/gradle-wrapper.jar
+            gradle/wrapper/gradle-wrapper.properties
+          if-no-files-found: error
