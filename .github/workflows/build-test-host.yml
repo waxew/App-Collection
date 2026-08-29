@@ -1,4 +1,4 @@
-# Build only the consolidated single-install test application.
+# Build and validate the consolidated one-install QA application.
 name: Build single Test APK
 
 on:
@@ -18,37 +18,56 @@ jobs:
   build-test-host:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
     steps:
+      # Validate exactly the repository revision that triggered this run.
       - name: Checkout source
         uses: actions/checkout@v4
 
+      # Match the Java runtime used by the 78 standalone-module workflow.
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      # Provide sdkmanager, aapt, apksigner and the other Android command-line tools.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      # The project intentionally stays on stable Android 16 / API 36, not a preview SDK.
       - name: Install Android 16 SDK
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
+      # Explicit Gradle setup keeps GitHub runners reproducible even if their image changes.
       - name: Set up Gradle 9.5.0
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.0'
 
-      # Build from the nested standalone host project so the 78 original application modules
-      # remain independent reference projects and are not installed separately.
-      # Direct class references in TestLauncherActivity make a missing source fail compilation.
+      # Use a high, monotonically increasing CI versionCode so a newer host APK can update an older
+      # installed QA host. versionName 1.1.0 matches the current completed collection milestone.
+      - name: Calculate host release metadata
+        shell: bash
+        run: |
+          VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER))
+          VERSION_NAME="1.1.0"
+          echo "HOST_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "HOST_VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "Using host versionCode=$VERSION_CODE versionName=$VERSION_NAME"
+
+      # Build from the nested host project. Direct class references make missing numbered sources a
+      # compile error instead of allowing a menu whose buttons later fail with ClassNotFoundException.
       - name: Build consolidated debug and release APK
         working-directory: test-host
-        run: gradle :app:assembleDebug :app:assembleRelease --no-daemon --stacktrace
+        run: >-
+          gradle :app:assembleDebug :app:assembleRelease
+          -PreleaseVersionCode="$HOST_VERSION_CODE"
+          -PreleaseVersionName="$HOST_VERSION_NAME"
+          --no-daemon --stacktrace
 
-      # Structural runtime guard: the first broken host build compiled because only the textual
-      # p01..p78 class names were present. This check inspects all generated DEX files and requires
-      # the real class descriptor for every numbered MainActivity before an artifact is uploaded.
+      # Structural runtime guard: inspect generated DEX data and require every p01..p78 MainActivity
+      # descriptor before the host is allowed to become a downloadable artifact.
       - name: Verify all 78 activities are embedded in DEX
         shell: bash
         run: |
@@ -58,7 +77,13 @@ jobs:
           rm -rf /tmp/test-host-dex
           mkdir -p /tmp/test-host-dex
           unzip -q "$APK" 'classes*.dex' -d /tmp/test-host-dex
-          strings /tmp/test-host-dex/classes*.dex > /tmp/test-host-dex/all-strings.txt
+
+          # Some APKs may contain multiple DEX files. Concatenate printable strings from all of them
+          # before checking descriptors so multidex does not create a false missing-class result.
+          : > /tmp/test-host-dex/all-strings.txt
+          for dex in /tmp/test-host-dex/classes*.dex; do
+            strings "$dex" >> /tmp/test-host-dex/all-strings.txt
+          done
 
           missing=0
           for n in $(seq -w 1 78); do
@@ -72,24 +97,52 @@ jobs:
           echo "Missing embedded activities: $missing"
           test "$missing" -eq 0
 
-      - name: Verify debug APK signature
+      # Verify both the debug signature and the REAL package/version metadata stored in the APK.
+      # This prevents an artifact filename from claiming a newer version while PackageManager sees
+      # an old versionCode/versionName internally.
+      - name: Verify debug APK signature and metadata
         shell: bash
         run: |
           APK=$(find test-host/app/build/outputs/apk/debug -name '*.apk' | head -n 1)
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
 
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          badging=$("$AAPT" dump badging "$APK" | head -n 1)
+          echo "$badging" | grep -F "package: name='com.asteam.appcollection.test'" >/dev/null
+          echo "$badging" | grep -F "versionCode='$HOST_VERSION_CODE'" >/dev/null
+          echo "$badging" | grep -F "versionName='$HOST_VERSION_NAME'" >/dev/null
+
+      # Release is unsigned at this public-CI stage, but its package/version metadata must still be
+      # identical to the validated debug variant before private stable signing occurs.
+      - name: Verify unsigned release APK metadata
+        shell: bash
+        run: |
+          APK=$(find test-host/app/build/outputs/apk/release -name '*-unsigned.apk' | head -n 1)
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          test -n "$APK"
+          test -f "$APK"
+          badging=$("$AAPT" dump badging "$APK" | head -n 1)
+          echo "$badging" | grep -F "package: name='com.asteam.appcollection.test'" >/dev/null
+          echo "$badging" | grep -F "versionCode='$HOST_VERSION_CODE'" >/dev/null
+          echo "$badging" | grep -F "versionName='$HOST_VERSION_NAME'" >/dev/null
+
+      # Give both variants explicit versioned names in the artifact for unambiguous QA/recovery.
       - name: Collect APKs
         shell: bash
         run: |
           mkdir -p test-apk-output
-          cp "$(find test-host/app/build/outputs/apk/debug -name '*.apk' | head -n 1)" test-apk-output/Test-debug.apk
-          cp "$(find test-host/app/build/outputs/apk/release -name '*-unsigned.apk' | head -n 1)" test-apk-output/Test-release-unsigned.apk
-          test -f test-apk-output/Test-debug.apk
-          test -f test-apk-output/Test-release-unsigned.apk
+          cp "$(find test-host/app/build/outputs/apk/debug -name '*.apk' | head -n 1)" \
+            "test-apk-output/Test-debug-v$HOST_VERSION_NAME-vc$HOST_VERSION_CODE.apk"
+          cp "$(find test-host/app/build/outputs/apk/release -name '*-unsigned.apk' | head -n 1)" \
+            "test-apk-output/Test-release-v$HOST_VERSION_NAME-vc$HOST_VERSION_CODE-unsigned.apk"
+          test "$(find test-apk-output -name '*.apk' | wc -l)" -eq 2
 
+      # The unsigned release is intentionally handed to the private stable-signing stage; no
+      # keystore/password is stored in this public repository or its GitHub Actions logs.
       - name: Upload consolidated Test APKs
         uses: actions/upload-artifact@v4
         with:
-          name: App-Collection-Single-Test-APK
+          name: App-Collection-Single-Test-APK-v${{ env.HOST_VERSION_NAME }}-vc${{ env.HOST_VERSION_CODE }}
           path: test-apk-output/*.apk
           if-no-files-found: error
