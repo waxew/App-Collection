@@ -4,3 +4,20 @@
 local.properties
 .idea/
 *.iml
+
+# Private Android signing material must never be committed to this public repository.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# Common private certificate/key containers are ignored defensively as well.
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Local operating-system/editor files that are not part of the Android source.
+.DS_Store
+Thumbs.db
+.vscode/
