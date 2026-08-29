@@ -24,6 +24,10 @@ jobs:
       # Wrapper must be generated against this repository's real Gradle settings/build scripts.
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          # Keep branch history available so a generated wrapper commit can be safely rebased when
+          # another documentation/CI commit reaches main while this job is still running.
+          fetch-depth: 0
 
       # Gradle 9.5.0 is the repository's pinned toolchain version.
       - name: Set up Gradle 9.5.0
@@ -53,8 +57,13 @@ jobs:
             exit 0
           fi
 
+          # Create a commit containing only the four generated wrapper paths.
           git commit -m "Add official Gradle 9.5.0 wrapper"
-          git push
+
+          # Main may have advanced while Gradle was generating the wrapper. Rebase this isolated
+          # commit onto the latest remote main instead of force-pushing or discarding newer work.
+          git pull --rebase origin main
+          git push origin HEAD:main
 
       # Keep an artifact copy as an independent recovery/reference package.
       - name: Upload wrapper files
