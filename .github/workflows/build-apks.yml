@@ -1,11 +1,12 @@
-# Build and validate all 78 Android applications.
+# Build, version, validate and package all 78 Android applications.
 #
 # Important signing and update rules:
 # - Debug APKs are development/test artifacts only.
 # - Release APKs produced here are intentionally UNSIGNED.
 # - The private release signing key must never be committed to this public repository.
 # - Final distributable APKs must always be signed with the SAME stable release key.
-# - CI injects a monotonically increasing versionCode so newer builds are recognized as updates.
+# - CI injects a monotonically increasing versionCode and a user-facing versionName.
+# - aapt reads the metadata back from every produced APK so a filename cannot hide bad versioning.
 name: Build 78 Android APKs
 
 on:
@@ -32,6 +33,7 @@ jobs:
         run: |
           test "$(find . -maxdepth 1 -type d -name '[0-9][0-9]-*' | wc -l)" -eq 78
           test -f settings.gradle.kts
+          test -f CATALOG.md
           ! grep -R 'compileSdk = 37\|targetSdk = 37' --include='*.kts' .
 
       # AGP 9.x is run with JDK 17 in CI for deterministic builds.
@@ -56,33 +58,68 @@ jobs:
           gradle-version: '9.5.0'
 
       # GitHub run numbers increase on every run and therefore give Android a newer package version.
-      # The +1000 offset keeps these CI-produced packages clearly above the original versionCode=1 builds.
-      - name: Calculate monotonic Android versionCode
+      # The +1000 offset keeps CI-produced packages above the original versionCode=1 local builds.
+      - name: Calculate release version metadata
         shell: bash
         run: |
           VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
+          VERSION_NAME="1.1.0"
           echo "ANDROID_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-          echo "Using Android versionCode=$VERSION_CODE"
+          echo "ANDROID_VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "Using Android versionCode=$VERSION_CODE versionName=$VERSION_NAME"
 
-      # Build both variants with the same increasing versionCode.
+      # Build both variants with the same verified release metadata.
       # Release remains unsigned because the production key is private and must not live in GitHub.
       - name: Build debug and unsigned release APKs
-        run: gradle assembleDebug assembleRelease -PreleaseVersionCode="$ANDROID_VERSION_CODE" --no-daemon --stacktrace
+        run: >-
+          gradle assembleDebug assembleRelease
+          -PreleaseVersionCode="$ANDROID_VERSION_CODE"
+          -PreleaseVersionName="$ANDROID_VERSION_NAME"
+          --no-daemon --stacktrace
 
-      # Verify every debug APK with Android's official apksigner tool. Debug remains QA-only.
-      - name: Verify all debug APK signatures
+      # Verify every debug APK signature AND read version metadata back from the APK itself.
+      - name: Verify debug APK signatures and metadata
         shell: bash
         run: |
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           checked=0
           for module in [0-9][0-9]-*; do
             apk=$(find "$module/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' | head -n 1)
             test -n "$apk"
             test -f "$apk"
+
+            # Debug APK must be properly signed by the Android debug signing configuration.
             "$APKSIGNER" verify --verbose --print-certs "$apk" >/dev/null
+
+            # Verify the values that Android PackageManager will actually see after installation.
+            badging=$("$AAPT" dump badging "$apk" | head -n 1)
+            echo "$badging" | grep -F "versionCode='$ANDROID_VERSION_CODE'" >/dev/null
+            echo "$badging" | grep -F "versionName='$ANDROID_VERSION_NAME'" >/dev/null
+
             checked=$((checked + 1))
           done
-          echo "Verified $checked debug APK signatures"
+          echo "Verified signatures and metadata for $checked debug APKs"
+          test "$checked" -eq 78
+
+      # Verify metadata inside every unsigned release APK before it reaches the private signing stage.
+      - name: Verify unsigned release APK metadata
+        shell: bash
+        run: |
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          checked=0
+          for module in [0-9][0-9]-*; do
+            apk=$(find "$module/build/outputs/apk/release" -maxdepth 1 -name '*-unsigned.apk' | head -n 1)
+            test -n "$apk"
+            test -f "$apk"
+
+            badging=$("$AAPT" dump badging "$apk" | head -n 1)
+            echo "$badging" | grep -F "versionCode='$ANDROID_VERSION_CODE'" >/dev/null
+            echo "$badging" | grep -F "versionName='$ANDROID_VERSION_NAME'" >/dev/null
+
+            checked=$((checked + 1))
+          done
+          echo "Verified metadata for $checked unsigned release APKs"
           test "$checked" -eq 78
 
       # Collect debug APKs under predictable names. These are useful for developer QA only.
@@ -93,15 +130,14 @@ jobs:
           for module in [0-9][0-9]-*; do
             apk=$(find "$module/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' | head -n 1)
             if [ -n "$apk" ] && [ -f "$apk" ]; then
-              cp "$apk" "apk-debug-output/$module-debug-vc$ANDROID_VERSION_CODE.apk"
+              cp "$apk" "apk-debug-output/$module-debug-v$ANDROID_VERSION_NAME-vc$ANDROID_VERSION_CODE.apk"
             fi
           done
           count=$(find apk-debug-output -name '*.apk' | wc -l)
           echo "Collected $count debug APKs"
           test "$count" -eq 78
 
-      # Collect release variants before production signing. They carry the newer versionCode but
-      # become installable update packages only after signing with the SAME stable production key.
+      # Collect release variants before production signing. They carry verified version metadata.
       - name: Collect unsigned release APKs
         shell: bash
         run: |
@@ -109,7 +145,7 @@ jobs:
           for module in [0-9][0-9]-*; do
             apk=$(find "$module/build/outputs/apk/release" -maxdepth 1 -name '*-unsigned.apk' | head -n 1)
             if [ -n "$apk" ] && [ -f "$apk" ]; then
-              cp "$apk" "apk-release-unsigned-output/$module-release-vc$ANDROID_VERSION_CODE-unsigned.apk"
+              cp "$apk" "apk-release-unsigned-output/$module-release-v$ANDROID_VERSION_NAME-vc$ANDROID_VERSION_CODE-unsigned.apk"
             fi
           done
           count=$(find apk-release-unsigned-output -name '*.apk' | wc -l)
@@ -120,7 +156,7 @@ jobs:
       - name: Upload debug test APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-collection-78-debug-test-apks-vc${{ env.ANDROID_VERSION_CODE }}
+          name: app-collection-78-debug-test-apks-v${{ env.ANDROID_VERSION_NAME }}-vc${{ env.ANDROID_VERSION_CODE }}
           path: apk-debug-output/*.apk
           if-no-files-found: error
 
@@ -128,7 +164,7 @@ jobs:
       - name: Upload unsigned release APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-collection-78-release-unsigned-apks-vc${{ env.ANDROID_VERSION_CODE }}
+          name: app-collection-78-release-unsigned-v${{ env.ANDROID_VERSION_NAME }}-vc${{ env.ANDROID_VERSION_CODE }}
           path: apk-release-unsigned-output/*.apk
           if-no-files-found: error
 
@@ -140,11 +176,12 @@ jobs:
           mkdir -p signing-tools/lib signing-tools/lib64
           cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" signing-tools/
           cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" signing-tools/
+          cp "$ANDROID_HOME/build-tools/36.0.0/aapt" signing-tools/
           cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" signing-tools/lib/
           LIBCPP=$(find "$ANDROID_HOME/build-tools/36.0.0" -type f -name 'libc++.so' | head -n 1)
           test -n "$LIBCPP"
           cp "$LIBCPP" signing-tools/lib64/libc++.so
-          chmod +x signing-tools/apksigner signing-tools/zipalign
+          chmod +x signing-tools/apksigner signing-tools/zipalign signing-tools/aapt
 
       - name: Upload Android signing tools
         uses: actions/upload-artifact@v4
