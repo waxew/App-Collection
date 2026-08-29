@@ -31,7 +31,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Provide sdkmanager, aapt, apksigner and the other Android command-line tools.
+      # Provide sdkmanager, apkanalyzer, apksigner and the other Android command-line tools.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
@@ -98,34 +98,39 @@ jobs:
           test "$missing" -eq 0
 
       # Verify both the debug signature and the REAL package/version metadata stored in the APK.
-      # This prevents an artifact filename from claiming a newer version while PackageManager sees
-      # an old versionCode/versionName internally.
+      #
+      # Do not use legacy `aapt dump badging` here. With API 36 it can try to resolve framework
+      # drawable references (for example @android:drawable/ic_menu_manage) and fail even though the
+      # manifest and APK are valid. `apkanalyzer manifest` reads the manifest fields directly and is
+      # therefore the reliable verifier for applicationId/versionCode/versionName.
       - name: Verify debug APK signature and metadata
         shell: bash
         run: |
+          set -euo pipefail
           APK=$(find test-host/app/build/outputs/apk/debug -name '*.apk' | head -n 1)
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "$APKANALYZER"
 
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          badging=$("$AAPT" dump badging "$APK" | head -n 1)
-          echo "$badging" | grep -F "package: name='com.asteam.appcollection.test'" >/dev/null
-          echo "$badging" | grep -F "versionCode='$HOST_VERSION_CODE'" >/dev/null
-          echo "$badging" | grep -F "versionName='$HOST_VERSION_NAME'" >/dev/null
+          test "$("$APKANALYZER" manifest application-id "$APK")" = "com.asteam.appcollection.test"
+          test "$("$APKANALYZER" manifest version-code "$APK")" = "$HOST_VERSION_CODE"
+          test "$("$APKANALYZER" manifest version-name "$APK")" = "$HOST_VERSION_NAME"
 
       # Release is unsigned at this public-CI stage, but its package/version metadata must still be
       # identical to the validated debug variant before private stable signing occurs.
       - name: Verify unsigned release APK metadata
         shell: bash
         run: |
+          set -euo pipefail
           APK=$(find test-host/app/build/outputs/apk/release -name '*-unsigned.apk' | head -n 1)
-          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
           test -n "$APK"
           test -f "$APK"
-          badging=$("$AAPT" dump badging "$APK" | head -n 1)
-          echo "$badging" | grep -F "package: name='com.asteam.appcollection.test'" >/dev/null
-          echo "$badging" | grep -F "versionCode='$HOST_VERSION_CODE'" >/dev/null
-          echo "$badging" | grep -F "versionName='$HOST_VERSION_NAME'" >/dev/null
+          test -x "$APKANALYZER"
+          test "$("$APKANALYZER" manifest application-id "$APK")" = "com.asteam.appcollection.test"
+          test "$("$APKANALYZER" manifest version-code "$APK")" = "$HOST_VERSION_CODE"
+          test "$("$APKANALYZER" manifest version-name "$APK")" = "$HOST_VERSION_NAME"
 
       # Give both variants explicit versioned names in the artifact for unambiguous QA/recovery.
       - name: Collect APKs
