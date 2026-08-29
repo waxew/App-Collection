@@ -1,4 +1,5 @@
 # Package the exact tracked repository revision into a clean source archive for delivery/recovery.
+# This revision is the final-delivery package after API-36-safe manifest verification was adopted.
 name: Package final source
 
 on:
