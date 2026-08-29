@@ -1,16 +1,19 @@
-# Generate the standard Gradle Wrapper files used for reproducible local builds.
+# Generate and commit the standard Gradle Wrapper files used for reproducible local builds.
 name: Generate Gradle Wrapper
 
 on:
-  # Run once when this workflow is first added/changed and allow future manual regeneration.
+  # A workflow edit triggers one regeneration. The wrapper commit itself does not match this path,
+  # so the workflow cannot enter a self-triggering commit loop.
   push:
     branches: [main]
     paths:
       - '.github/workflows/generate-gradle-wrapper.yml'
   workflow_dispatch:
 
+# Write access is required only so the job can commit the four official wrapper files.
+# No application source, manifest, documentation or signing material is modified by this workflow.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   wrapper:
@@ -28,11 +31,32 @@ jobs:
         with:
           gradle-version: '9.5.0'
 
-      # Generate official wrapper scripts, properties and gradle-wrapper.jar.
+      # Generate the official Unix/Windows scripts, properties and gradle-wrapper.jar.
       - name: Generate wrapper files
         run: gradle wrapper --gradle-version 9.5.0 --distribution-type bin --no-daemon
 
-      # The artifact is reviewed/committed separately so this workflow never pushes code by itself.
+      # Commit ONLY the wrapper outputs. Explicit paths prevent this utility workflow from
+      # accidentally committing unrelated workspace changes in the future.
+      - name: Commit official wrapper files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Preserve the executable bit expected by Linux/macOS users.
+          chmod +x gradlew
+          git add gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties
+          git update-index --chmod=+x gradlew
+
+          if git diff --cached --quiet; then
+            echo "Gradle Wrapper 9.5.0 is already committed."
+            exit 0
+          fi
+
+          git commit -m "Add official Gradle 9.5.0 wrapper"
+          git push
+
+      # Keep an artifact copy as an independent recovery/reference package.
       - name: Upload wrapper files
         uses: actions/upload-artifact@v4
         with:
