@@ -12,6 +12,18 @@ name: Build 78 Android APKs
 on:
   push:
     branches: [main]
+    # Documentation-only commits should not spend several minutes rebuilding 78 applications.
+    # Any source, manifest, Gradle or workflow change that can affect APK bytes still triggers CI.
+    paths:
+      - '[0-9][0-9]-*/**'
+      - 'shared-ui/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/workflows/build-apks.yml'
   workflow_dispatch:
 
 permissions:
