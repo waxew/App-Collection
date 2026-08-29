@@ -1,4 +1,4 @@
-# Launch every rebuilt Activity on an Android emulator and fail CI on runtime crashes.
+# Launch every rebuilt Activity on a real Android emulator and fail CI on runtime crashes.
 name: Emulator smoke test 78 activities
 
 on:
@@ -35,7 +35,11 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # The project compiles and targets stable Android 16 / API 36.
+      # The application still compiles/targets stable Android 16 / API 36. Runtime smoke testing is
+      # intentionally performed on API 35 because the previous API-36 GitHub AVD was connected by
+      # adb but reported as an unknown/incompatible API to AGP's connected-device test runner. The
+      # JUnit report proved no Activity test had started. API 35 remains fully compatible with this
+      # minSdk=23 application and provides a mature, deterministic CI runtime for launch/crash QA.
       - name: Install Android 16 build SDK
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
@@ -49,20 +53,28 @@ jobs:
       # fail quickly and are reported separately from device/runtime failures.
       - name: Compile instrumentation test APK
         working-directory: test-host
-        run: gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
 
-      # Run the persistent 78-Activity smoke test on Android 16. ActivityScenario opens each
-      # screen, waits for its initial lifecycle, and closes it before moving to the next screen.
-      - name: Launch all 78 activities on Android 16 emulator
+      # ActivityScenario opens each of the 78 real Activities, waits for initial lifecycle delivery,
+      # and closes it before moving to the next. The diagnostic getprop/adb commands run first so a
+      # future infrastructure problem is distinguishable from an application crash in the CI log.
+      - name: Launch all 78 activities on stable Android emulator
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
-          api-level: 36
+          api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: cd test-host && gradle :app:connectedDebugAndroidTest --no-daemon --stacktrace
+          script: |
+            adb wait-for-device
+            adb shell getprop sys.boot_completed
+            adb shell getprop ro.build.version.sdk
+            adb shell getprop ro.product.cpu.abi
+            adb devices -l
+            cd test-host
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace --info
 
       # Preserve JUnit/XML and HTML reports even when a future Activity fails, making the exact
       # numbered sample and stack trace available instead of a generic "could not run" message.
