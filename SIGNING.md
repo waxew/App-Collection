@@ -14,7 +14,9 @@ Android فقط زمانی APK جدید را به‌عنوان Update نسخه ن
 
 ## Versioning در CI
 
-Workflow اصلی Build مقدار واقعی `versionCode` و `versionName` را با Gradle property تزریق می‌کند. سپس با `aapt dump badging` دوباره metadata داخل خود APK را می‌خواند. به این ترتیب فقط نام Artifact ملاک نیست و خطای نسخه‌گذاری قبل از تحویل شناسایی می‌شود.
+Workflow اصلی Build مقدار واقعی `versionCode` و `versionName` را با Gradle property تزریق می‌کند. سپس با `apkanalyzer manifest` دوباره `applicationId`، `versionCode` و `versionName` را مستقیماً از Manifest داخل خود APK می‌خواند. به این ترتیب فقط نام Artifact ملاک نیست و خطای نسخه‌گذاری قبل از تحویل شناسایی می‌شود.
+
+از `aapt dump badging` برای این کنترل استفاده نمی‌شود، چون در Android 16 / API 36 ممکن است هنگام resolve کردن بعضی resourceهای framework مانند drawableهای سیستمی خطای کاذب بدهد، درحالی‌که خود APK و Manifest معتبر هستند.
 
 ## Signing Key
 
@@ -31,15 +33,19 @@ Alias ثبت‌شده برای Recovery خصوصی: `app-collection-release`.
 ## ترتیب صحیح Release Signing
 
 1. `assembleRelease` نسخه unsigned را تولید می‌کند.
-2. `zipalign` روی APK اجرا می‌شود.
-3. `apksigner sign` با Signing Key پایدار اجرا می‌شود.
-4. `apksigner verify --verbose --print-certs` امضا را کنترل می‌کند.
-5. SHA-256 فایل نهایی ثبت می‌شود.
-6. `aapt dump badging` package/versionCode/versionName را کنترل می‌کند.
+2. قبل از Signing، `apkanalyzer manifest` مقدار واقعی package/version را کنترل می‌کند.
+3. `zipalign` روی APK اجرا می‌شود.
+4. `apksigner sign` با Signing Key پایدار اجرا می‌شود.
+5. `apksigner verify --verbose --print-certs` امضا و Certificate را کنترل می‌کند.
+6. SHA-256 فایل نهایی ثبت می‌شود.
+7. Certificate SHA-256 با Fingerprint ثبت‌شده همین سند تطبیق داده می‌شود.
 
 نمونه دستورات با placeholder:
 
 ```bash
+apkanalyzer manifest application-id app-release-unsigned.apk
+apkanalyzer manifest version-code app-release-unsigned.apk
+apkanalyzer manifest version-name app-release-unsigned.apk
 zipalign -f -p 4 app-release-unsigned.apk app-release-aligned.apk
 apksigner sign --ks /PRIVATE/PATH/release-key.jks --ks-key-alias app-collection-release --out app-release.apk app-release-aligned.apk
 apksigner verify --verbose --print-certs app-release.apk
