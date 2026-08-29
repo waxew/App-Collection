@@ -1,2 +1,23 @@
-<!-- Shared library manifest. The library declares no exported Android component. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<!--
+  Shared library manifest.
+
+  The two Activities below are internal destinations used by every numbered application.
+  android:exported="false" keeps them private to the hosting APK; they cannot be launched directly
+  by another application. Android manifest merging automatically adds these declarations to each
+  of the 78 final application manifests and to the consolidated test host.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Dedicated Settings destination opened from the shared hamburger drawer. -->
+        <activity
+            android:name="com.asteam.appcollection.sharedui.SettingsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+
+        <!-- Dedicated About us / Contact us / About software destination. -->
+        <activity
+            android:name="com.asteam.appcollection.sharedui.InfoPageActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+    </application>
+</manifest>
