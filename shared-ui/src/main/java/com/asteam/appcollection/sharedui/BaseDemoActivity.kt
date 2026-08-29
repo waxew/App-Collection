@@ -19,69 +19,73 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 /**
- * Base screen shared by all 78 rebuilt applications.
+ * Common Activity shell used by every numbered application in App-Collection.
  *
- * The class deliberately uses Android platform Views only. That keeps every tiny educational APK
- * small while still giving all modules one consistent shell. Any cross-project navigation or UI
- * rule is implemented here once instead of being copied into 78 separate projects.
+ * Keeping navigation, profile handling and small reusable View helpers in one module prevents the
+ * same infrastructure from being copied 78 times. Each numbered project only implements the
+ * feature-specific content inside [renderDemo].
  *
- * Shared shell contract:
- * - Hamburger control appears at the top-right.
- * - The drawer opens as a real right-side overlay.
- * - A small profile block is shown at the top of the drawer.
- * - Tapping the profile image lets the user choose or remove a locally stored image.
- * - Settings, About us, Contact us and About software open dedicated Activities.
- * - Share uses the Android system Sharesheet.
- * - About software contains only user-facing app text and the installed version; no package name,
- *   applicationId, source filename or other internal identifier is exposed there.
- * - Back closes the drawer first and otherwise follows normal Android back-stack behavior.
+ * Project-wide UI rules implemented here:
+ * - The hamburger button is shown at the top-right of the RTL toolbar.
+ * - The drawer opens from the logical END/right side of the screen.
+ * - The drawer contains a circular local profile image and a persisted display name.
+ * - Settings/About/Contact/About-software open dedicated Activities rather than temporary dialogs.
+ * - About-software receives only user-facing title/description/version information.
+ * - Back closes an open drawer first; otherwise normal Android back-stack navigation is used.
+ *
+ * The class also preserves small protected helper methods such as [showInfo], [label], [button]
+ * and [input]. Several rebuilt examples use those helpers, so they form part of the shared source
+ * API and must not be removed when the drawer implementation is refactored.
  */
 abstract class BaseDemoActivity : Activity() {
 
-    /** Human-readable screen title supplied by each numbered application module. */
+    /** Human-readable title supplied by the concrete numbered application. */
     protected abstract val demoTitle: String
 
-    /** Short user-facing explanation supplied by each numbered application module. */
+    /** Short user-facing description supplied by the concrete numbered application. */
     protected abstract val demoDescription: String
 
     /**
-     * Historical source reference retained only inside source/documentation for traceability.
-     * It is intentionally NOT displayed in the About software screen.
+     * Historical source-file reference used only for source traceability/documentation.
+     * It is intentionally never exposed in the user-facing About-software page.
      */
     protected abstract val sourceReference: String
 
-    /** Right-side drawer overlay created after Activity.onCreate starts. */
-    private lateinit var drawer: LinearLayout
-
-    /** Feature content container populated by the concrete numbered demo. */
+    /** Feature-specific controls are inserted into this container by [renderDemo]. */
     private lateinit var demoContainer: LinearLayout
 
-    /** Drawer profile image refreshed after the user selects or removes a local picture. */
+    /** Scroll wrapper representing the visible/hidden right-side drawer. */
+    private lateinit var drawerScroll: ScrollView
+
+    /** Vertical content container hosted inside [drawerScroll]. */
+    private lateinit var drawerContent: LinearLayout
+
+    /** Circular image refreshed after the user chooses or removes a local profile image. */
     private lateinit var profileImageView: ImageView
 
-    /** Drawer username text refreshed when SettingsActivity changes the stored display name. */
+    /** Display name refreshed whenever this Activity returns from Settings. */
     private lateinit var profileNameView: TextView
 
-    /** Called by Android when the concrete Activity is first created. */
+    /** Android lifecycle entry point for every rebuilt demo Activity. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Build the common toolbar/content/drawer shell before the module renders its own controls.
+        // Construct the common shell before rendering feature-specific content.
         setContentView(buildAppShell())
 
-        // Put a concise explanation at the beginning of every demo so the sample is self-describing.
+        // Every sample starts with a concise description so its purpose is visible immediately.
         demoContainer.addView(label(demoDescription, 17f))
 
-        // Delegate only the actual educational feature to the numbered module implementation.
+        // Only the numbered module owns the actual demonstration/tool logic.
         renderDemo(demoContainer)
     }
 
-    /** Each numbered application inserts its own interactive controls into this container. */
+    /** Each numbered application implements its controls and behavior in this method. */
     protected abstract fun renderDemo(container: LinearLayout)
 
     /**
-     * Refresh profile data whenever the Activity becomes visible again.
-     * This is important after returning from the dedicated Settings page.
+     * Returning from Settings may change the display name, so the drawer profile is refreshed on
+     * every resume rather than only once during Activity creation.
      */
     override fun onResume() {
         super.onResume()
@@ -90,47 +94,47 @@ abstract class BaseDemoActivity : Activity() {
         }
     }
 
-    /** Builds the toolbar, scrollable feature content and right-side drawer overlay. */
+    /** Builds the toolbar, scrollable feature body and right-side drawer overlay. */
     private fun buildAppShell(): View {
-        // FrameLayout allows the drawer to sit above the page instead of replacing its content.
-        val frame = FrameLayout(this)
+        // FrameLayout lets the drawer overlay the page while preserving the feature screen below it.
+        val rootFrame = FrameLayout(this)
 
-        // Main vertical page: toolbar on top and scrollable demo content below it.
+        // Main page is RTL and vertically stacks toolbar + scrollable feature content.
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(248, 249, 252))
             layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setBackgroundColor(Color.rgb(248, 249, 252))
         }
 
-        // Compact top bar shared by every numbered application.
+        // A lightweight platform-View toolbar keeps all 78 APKs small and dependency-free.
         val toolbar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(8), dp(8), dp(8), dp(8))
             setBackgroundColor(Color.WHITE)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
 
-        // Hamburger button is placed first in RTL order, therefore it appears on the right edge.
+        // In RTL order this first control is placed on the visual right side as required.
         val menuButton = Button(this).apply {
             text = "☰"
             textSize = 22f
             isAllCaps = false
-            contentDescription = "باز کردن نوار همبرگری"
-            setOnClickListener { toggleDrawer() }
+            contentDescription = "باز کردن منوی برنامه"
+            setOnClickListener { setDrawerVisible(!isDrawerVisible()) }
         }
 
-        // App title consumes all remaining toolbar width.
-        val title = TextView(this).apply {
+        // Title consumes the remaining toolbar width.
+        val titleView = TextView(this).apply {
             text = demoTitle
             textSize = 20f
-            setTextColor(Color.rgb(25, 30, 40))
             gravity = Gravity.CENTER_VERTICAL
+            setTextColor(Color.rgb(25, 30, 40))
             setPadding(dp(12), 0, dp(12), 0)
         }
 
         toolbar.addView(menuButton, LinearLayout.LayoutParams(dp(64), dp(52)))
-        toolbar.addView(title, LinearLayout.LayoutParams(0, dp(52), 1f))
+        toolbar.addView(titleView, LinearLayout.LayoutParams(0, dp(52), 1f))
         page.addView(
             toolbar,
             LinearLayout.LayoutParams(
@@ -139,15 +143,15 @@ abstract class BaseDemoActivity : Activity() {
             )
         )
 
-        // Feature-specific controls are inserted into this vertical container by renderDemo().
+        // Concrete demos receive this container through renderDemo().
         demoContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(32))
             layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(dp(18), dp(18), dp(18), dp(32))
         }
 
-        // Scrolling prevents controls from being cut off on compact phones or large accessibility text.
-        val contentScroll = ScrollView(this).apply {
+        // Scrolling prevents sample controls from being clipped on small screens/large font sizes.
+        val featureScroll = ScrollView(this).apply {
             isFillViewport = true
             addView(
                 demoContainer,
@@ -158,10 +162,10 @@ abstract class BaseDemoActivity : Activity() {
             )
         }
         page.addView(
-            contentScroll,
+            featureScroll,
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
         )
-        frame.addView(
+        rootFrame.addView(
             page,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -169,28 +173,19 @@ abstract class BaseDemoActivity : Activity() {
             )
         )
 
-        // A ScrollView around the drawer keeps all menu entries reachable on small displays.
-        val drawerScroll = ScrollView(this).apply {
-            setBackgroundColor(Color.WHITE)
-            visibility = View.GONE
-            elevation = dp(16).toFloat()
-        }
-
-        // The actual drawer content is a vertical list anchored inside the drawer ScrollView.
-        drawer = LinearLayout(this).apply {
+        // Drawer body is created once and wrapped in a ScrollView for compact phones.
+        drawerContent = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(dp(16), dp(24), dp(16), dp(24))
             setBackgroundColor(Color.WHITE)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
 
-        // Profile block follows the project-wide drawer convention.
+        // The profile block is always the first area in the common drawer.
         addProfileBlock()
+        drawerContent.addView(divider())
 
-        // A compact divider visually separates profile content from navigation entries.
-        drawer.addView(divider())
-
-        // Every navigation item has a platform icon and opens the required destination/action.
+        // Every navigation row has an icon and an explicit action.
         addDrawerItem("تنظیمات", android.R.drawable.ic_menu_preferences) { openSettings() }
         addDrawerItem("معرفی به دوستان", android.R.drawable.ic_menu_share) { shareApp() }
         addDrawerItem("درباره ما", android.R.drawable.ic_menu_info_details) {
@@ -202,52 +197,52 @@ abstract class BaseDemoActivity : Activity() {
         addDrawerItem("درباره نرم افزار", android.R.drawable.ic_menu_help) {
             openInfoPage(AppUiContract.PAGE_ABOUT_SOFTWARE)
         }
-        addDrawerItem("بستن منو", android.R.drawable.ic_menu_close_clear_cancel) { toggleDrawer() }
 
-        // Put the vertical drawer inside its scrolling wrapper.
-        drawerScroll.addView(
-            drawer,
-            ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+        // addDrawerItem already closes the drawer before invoking its action, therefore this row's
+        // action is intentionally empty. Calling a toggle here would immediately reopen the drawer.
+        addDrawerItem("بستن منو", android.R.drawable.ic_menu_close_clear_cancel) { }
+
+        drawerScroll = ScrollView(this).apply {
+            visibility = View.GONE
+            elevation = dp(16).toFloat()
+            setBackgroundColor(Color.WHITE)
+            addView(
+                drawerContent,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
             )
-        )
+        }
 
-        // Gravity.END keeps the overlay on the logical right side of the screen.
-        val drawerParams = FrameLayout.LayoutParams(
-            dp(310),
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            Gravity.END
+        // Gravity.END maps to the physical right side in this RTL application shell.
+        rootFrame.addView(
+            drawerScroll,
+            FrameLayout.LayoutParams(dp(310), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END)
         )
-        frame.addView(drawerScroll, drawerParams)
-
-        // Store the wrapper's visibility inside drawer tag so toggleDrawer() can control the overlay.
-        drawer.tag = drawerScroll
-        return frame
+        return rootFrame
     }
 
-    /** Creates the circular profile image and centered username area shown above drawer items. */
+    /** Creates the circular profile image and centered user-name block. */
     private fun addProfileBlock() {
-        // Oval background supplies a circular outline used by clipToOutline on supported Android APIs.
+        // The oval background supplies a circular outline for clipToOutline.
         val circularBackground = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(Color.rgb(238, 241, 247))
             setStroke(dp(1), Color.rgb(210, 215, 225))
         }
 
-        // Image is kept local to the device; no upload/network permission is involved.
+        // No network/upload permission is required; the selected image remains a local document URI.
         profileImageView = ImageView(this).apply {
             background = circularBackground
             clipToOutline = true
             scaleType = ImageView.ScaleType.CENTER_CROP
             setImageResource(android.R.drawable.ic_menu_myplaces)
-            contentDescription = "تصویر پروفایل؛ برای تغییر لمس کنید"
             setPadding(dp(18), dp(18), dp(18), dp(18))
+            contentDescription = "تصویر پروفایل؛ برای تغییر لمس کنید"
             setOnClickListener { showProfileImageOptions() }
         }
-
-        // Center the circular image independently from RTL/LTR layout direction.
-        drawer.addView(
+        drawerContent.addView(
             profileImageView,
             LinearLayout.LayoutParams(dp(104), dp(104)).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
@@ -255,11 +250,11 @@ abstract class BaseDemoActivity : Activity() {
             }
         )
 
-        // Username is stored per application because every numbered APK has independent preferences.
+        // Name and user icon are centered below the profile image.
         profileNameView = TextView(this).apply {
             textSize = 17f
-            setTextColor(Color.rgb(30, 35, 45))
             gravity = Gravity.CENTER
+            setTextColor(Color.rgb(30, 35, 45))
             setCompoundDrawablesRelativeWithIntrinsicBounds(
                 android.R.drawable.ic_menu_myplaces,
                 0,
@@ -269,54 +264,56 @@ abstract class BaseDemoActivity : Activity() {
             compoundDrawablePadding = dp(6)
             setPadding(dp(4), dp(4), dp(4), dp(12))
         }
-        drawer.addView(
+        drawerContent.addView(
             profileNameView,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
         )
-
-        // Populate the two profile widgets from SharedPreferences immediately.
         refreshProfileBlock()
     }
 
-    /** Reloads username and optional persisted profile-image URI from local SharedPreferences. */
+    /** Reloads the local profile name and optional persisted image URI. */
     private fun refreshProfileBlock() {
         val preferences = getSharedPreferences(AppUiContract.PREFERENCES_NAME, MODE_PRIVATE)
 
-        // Default username keeps the profile block usable before the user changes Settings.
-        profileNameView.text = preferences.getString(AppUiContract.KEY_PROFILE_NAME, "کاربر") ?: "کاربر"
+        // An empty/missing preference always has a safe visible default.
+        profileNameView.text =
+            preferences.getString(AppUiContract.KEY_PROFILE_NAME, "کاربر")?.ifBlank { "کاربر" }
+                ?: "کاربر"
 
-        // Restore the persisted document URI when one exists; fall back to the platform user icon.
         val storedUri = preferences.getString(AppUiContract.KEY_PROFILE_IMAGE_URI, null)
         if (storedUri.isNullOrBlank()) {
-            profileImageView.setImageResource(android.R.drawable.ic_menu_myplaces)
-            profileImageView.setPadding(dp(18), dp(18), dp(18), dp(18))
-        } else {
-            val uri = Uri.parse(storedUri)
-            val loaded = runCatching {
-                profileImageView.setPadding(0, 0, 0, 0)
-                profileImageView.setImageURI(uri)
-                true
-            }.getOrDefault(false)
+            showDefaultProfileImage()
+            return
+        }
 
-            // Broken/removed external documents must not leave an empty profile image.
-            if (!loaded || profileImageView.drawable == null) {
-                preferences.edit().remove(AppUiContract.KEY_PROFILE_IMAGE_URI).apply()
-                profileImageView.setImageResource(android.R.drawable.ic_menu_myplaces)
-                profileImageView.setPadding(dp(18), dp(18), dp(18), dp(18))
-            }
+        // setImageURI can fail if the external document was moved/revoked; recover automatically.
+        val loaded = runCatching {
+            profileImageView.setPadding(0, 0, 0, 0)
+            profileImageView.setImageURI(Uri.parse(storedUri))
+            profileImageView.drawable != null
+        }.getOrDefault(false)
+
+        if (!loaded) {
+            preferences.edit().remove(AppUiContract.KEY_PROFILE_IMAGE_URI).apply()
+            showDefaultProfileImage()
         }
     }
 
-    /** Shows the required one-tap popup for selecting or removing a profile image. */
+    /** Restores the built-in neutral profile icon after removal or inaccessible URI recovery. */
+    private fun showDefaultProfileImage() {
+        profileImageView.setImageResource(android.R.drawable.ic_menu_myplaces)
+        profileImageView.setPadding(dp(18), dp(18), dp(18), dp(18))
+    }
+
+    /** Shows the one-tap profile-image chooser/removal popup required by the drawer specification. */
     private fun showProfileImageOptions() {
-        val choices = arrayOf("انتخاب تصویر از دستگاه", "حذف تصویر پروفایل")
         AlertDialog.Builder(this)
             .setTitle("تصویر پروفایل")
-            .setItems(choices) { _, which ->
-                when (which) {
+            .setItems(arrayOf("انتخاب تصویر از دستگاه", "حذف تصویر پروفایل")) { _, index ->
+                when (index) {
                     0 -> openProfileImagePicker()
                     1 -> removeProfileImage()
                 }
@@ -325,7 +322,7 @@ abstract class BaseDemoActivity : Activity() {
             .show()
     }
 
-    /** Opens Android's document picker so the selected image can be referenced persistently. */
+    /** Opens Android's document picker and requests persistent read access to the chosen image. */
     private fun openProfileImagePicker() {
         val pickerIntent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -333,10 +330,11 @@ abstract class BaseDemoActivity : Activity() {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
+        @Suppress("DEPRECATION")
         startActivityForResult(pickerIntent, AppUiContract.REQUEST_PROFILE_IMAGE)
     }
 
-    /** Clears only the locally saved profile-image reference; the original user file is untouched. */
+    /** Removes only the saved URI reference; the user's original image file is never deleted. */
     private fun removeProfileImage() {
         getSharedPreferences(AppUiContract.PREFERENCES_NAME, MODE_PRIVATE)
             .edit()
@@ -345,28 +343,27 @@ abstract class BaseDemoActivity : Activity() {
         refreshProfileBlock()
     }
 
-    /** Receives the document-picker result and persists long-term read access to the chosen image. */
-    @Deprecated("Used for platform-only compatibility; the project intentionally avoids extra Activity dependencies")
+    /** Receives the profile document picker result while preserving results used by demo Activities. */
+    @Deprecated("Platform Activity result API is retained to keep shared-ui dependency-light")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        // Ignore unrelated Activity results used by feature demos.
+        // Ignore results that belong to camera/ringtone/gallery/etc. feature samples.
         if (requestCode != AppUiContract.REQUEST_PROFILE_IMAGE || resultCode != RESULT_OK) {
             return
         }
 
-        // A successful picker result should contain exactly one selected document URI.
         val selectedUri = data?.data ?: return
 
-        // Persist read permission when the DocumentsProvider supports it.
-        runCatching {
-            contentResolver.takePersistableUriPermission(
-                selectedUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
+        // Persist only permissions actually returned by the document provider.
+        val takeFlags = data.flags and
+            (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        if (takeFlags != 0) {
+            runCatching {
+                contentResolver.takePersistableUriPermission(selectedUri, takeFlags)
+            }
         }
 
-        // Store the URI as text so it survives application process restarts.
         getSharedPreferences(AppUiContract.PREFERENCES_NAME, MODE_PRIVATE)
             .edit()
             .putString(AppUiContract.KEY_PROFILE_IMAGE_URI, selectedUri.toString())
@@ -374,7 +371,7 @@ abstract class BaseDemoActivity : Activity() {
         refreshProfileBlock()
     }
 
-    /** Adds one icon-bearing clickable row to the right-side drawer. */
+    /** Adds one icon-bearing navigation/action row to the drawer. */
     private fun addDrawerItem(text: String, iconRes: Int, action: () -> Unit) {
         val item = Button(this).apply {
             this.text = text
@@ -384,12 +381,12 @@ abstract class BaseDemoActivity : Activity() {
             setCompoundDrawablesRelativeWithIntrinsicBounds(iconRes, 0, 0, 0)
             compoundDrawablePadding = dp(10)
             setOnClickListener {
-                // Hide the overlay before navigation so returning with Back never shows stale UI.
+                // Navigation starts from a closed drawer so Back never reveals stale overlay state.
                 setDrawerVisible(false)
                 action()
             }
         }
-        drawer.addView(
+        drawerContent.addView(
             item,
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54)).apply {
                 bottomMargin = dp(4)
@@ -397,7 +394,7 @@ abstract class BaseDemoActivity : Activity() {
         )
     }
 
-    /** Builds a one-pixel-style divider using density-aware dimensions. */
+    /** Creates a subtle separator between profile and navigation content. */
     private fun divider(): View = View(this).apply {
         setBackgroundColor(Color.rgb(222, 225, 232))
         layoutParams = LinearLayout.LayoutParams(
@@ -409,26 +406,23 @@ abstract class BaseDemoActivity : Activity() {
         }
     }
 
-    /** Returns the drawer ScrollView wrapper stored during shell construction. */
-    private fun drawerWrapper(): ScrollView = drawer.tag as ScrollView
+    /** Returns true only while the right-side drawer overlay is visible. */
+    private fun isDrawerVisible(): Boolean =
+        ::drawerScroll.isInitialized && drawerScroll.visibility == View.VISIBLE
 
-    /** Shows or hides the right-side drawer overlay. */
-    private fun toggleDrawer() {
-        val wrapper = drawerWrapper()
-        setDrawerVisible(wrapper.visibility != View.VISIBLE)
-    }
-
-    /** Applies drawer visibility in one place so Back and click navigation behave consistently. */
+    /** Centralizes drawer visibility changes for toolbar, menu rows and Back handling. */
     private fun setDrawerVisible(visible: Boolean) {
-        drawerWrapper().visibility = if (visible) View.VISIBLE else View.GONE
+        if (::drawerScroll.isInitialized) {
+            drawerScroll.visibility = if (visible) View.VISIBLE else View.GONE
+        }
     }
 
-    /** Opens the dedicated Settings screen rather than showing an inline dialog. */
+    /** Opens the dedicated shared Settings destination. */
     private fun openSettings() {
         startActivity(Intent(this, SettingsActivity::class.java))
     }
 
-    /** Uses Android Sharesheet to introduce/share the current app without hard-coding a store URL. */
+    /** Opens Android's Sharesheet without assuming a store URL that may not exist yet. */
     private fun shareApp() {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -441,21 +435,36 @@ abstract class BaseDemoActivity : Activity() {
         startActivity(Intent.createChooser(shareIntent, "معرفی به دوستان"))
     }
 
-    /** Opens one of the dedicated user-facing information pages and supplies only display data. */
+    /** Opens one of the dedicated About/Contact/Software pages with presentation-only data. */
     private fun openInfoPage(pageType: String) {
-        val destination = Intent(this, InfoPageActivity::class.java).apply {
-            putExtra(AppUiContract.EXTRA_PAGE_TYPE, pageType)
-            putExtra(AppUiContract.EXTRA_APP_TITLE, demoTitle)
-            putExtra(AppUiContract.EXTRA_APP_DESCRIPTION, demoDescription)
-            putExtra(AppUiContract.EXTRA_APP_VERSION, installedVersionName())
-        }
-        startActivity(destination)
+        startActivity(
+            Intent(this, InfoPageActivity::class.java).apply {
+                putExtra(AppUiContract.EXTRA_PAGE_TYPE, pageType)
+                putExtra(AppUiContract.EXTRA_APP_TITLE, demoTitle)
+                putExtra(AppUiContract.EXTRA_APP_DESCRIPTION, demoDescription)
+                putExtra(AppUiContract.EXTRA_APP_VERSION, installedVersionName())
+            }
+        )
     }
 
-    /** Reads the installed APK version name without exposing package/application identifiers. */
+    /** Reads only the installed versionName required by the About-software screen. */
     private fun installedVersionName(): String = runCatching {
         packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0.0"
     }.getOrDefault("1.0.0")
+
+    /**
+     * Shows concise feature feedback for rebuilt examples.
+     *
+     * This protected helper existed in the original shared shell and is used by multiple numbered
+     * modules for validation messages, selected-list values and unavailable-device capabilities.
+     * It is intentionally retained as part of the shared API; removing it would break those demos.
+     */
+    protected fun showInfo(message: String) {
+        AlertDialog.Builder(this)
+            .setMessage(message)
+            .setPositiveButton("باشه", null)
+            .show()
+    }
 
     /** Creates a reusable TextView for explanations and feature output. */
     protected fun label(text: String = "", sizeSp: Float = 16f): TextView = TextView(this).apply {
@@ -466,7 +475,7 @@ abstract class BaseDemoActivity : Activity() {
         layoutDirection = View.LAYOUT_DIRECTION_RTL
     }
 
-    /** Creates a reusable action button for numbered demo implementations. */
+    /** Creates a reusable action button for feature-specific demo code. */
     protected fun button(text: String, onClick: () -> Unit): Button = Button(this).apply {
         this.text = text
         textSize = 16f
@@ -474,21 +483,20 @@ abstract class BaseDemoActivity : Activity() {
         setOnClickListener { onClick() }
     }
 
-    /** Creates a reusable EditText with a visible hint for numbered demo implementations. */
+    /** Creates a reusable text input with a visible hint. */
     protected fun input(hint: String): EditText = EditText(this).apply {
         this.hint = hint
         textSize = 16f
         setPadding(dp(10), dp(10), dp(10), dp(10))
     }
 
-    /** Converts density-independent pixels into physical screen pixels. */
+    /** Converts density-independent pixels into physical pixels for consistent spacing. */
     protected fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    /** Back closes the drawer first; otherwise Android returns to the previous Activity normally. */
-    @Deprecated("Android calls this legacy override on the platform Activity used by these demos")
+    /** Back closes the drawer first and otherwise returns to the previous Android destination. */
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        val drawerIsVisible = ::drawer.isInitialized && drawerWrapper().visibility == View.VISIBLE
-        if (drawerIsVisible) {
+        if (isDrawerVisible()) {
             setDrawerVisible(false)
         } else {
             super.onBackPressed()
