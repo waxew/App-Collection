@@ -51,9 +51,13 @@ jobs:
 
       # Compile androidTest before emulator boot so dependency or direct-class-reference errors
       # fail quickly and are reported separately from device/runtime failures.
+      #
+      # The official Gradle Wrapper belongs to the repository root, while test-host is a nested
+      # standalone Gradle build with its own settings.gradle.kts. `../gradlew -p .` deliberately
+      # combines the root wrapper binary/version with the current test-host project directory.
       - name: Compile instrumentation test APK
         working-directory: test-host
-        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+        run: ../gradlew -p . :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
 
       # ActivityScenario opens each of the 78 real Activities, waits for initial lifecycle delivery,
       # and closes it before moving to the next. The diagnostic getprop/adb commands run first so a
@@ -74,7 +78,7 @@ jobs:
             adb shell getprop ro.product.cpu.abi
             adb devices -l
             cd test-host
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace --info
+            ../gradlew -p . :app:connectedDebugAndroidTest --no-daemon --stacktrace --info
 
       # Preserve JUnit/XML and HTML reports even when a future Activity fails, making the exact
       # numbered sample and stack trace available instead of a generic "could not run" message.
