@@ -6,7 +6,7 @@
 # - The private release signing key must never be committed to this public repository.
 # - Final distributable APKs must always be signed with the SAME stable release key.
 # - CI injects a monotonically increasing versionCode and a user-facing versionName.
-# - aapt reads the metadata back from every produced APK so a filename cannot hide bad versioning.
+# - apkanalyzer reads manifest metadata back from every APK so filenames cannot hide bad versioning.
 name: Build 78 Android APKs
 
 on:
@@ -89,13 +89,21 @@ jobs:
           -PreleaseVersionName="$ANDROID_VERSION_NAME"
           --no-daemon --stacktrace
 
-      # Verify every debug APK signature AND read version metadata back from the APK itself.
+      # Verify every debug APK signature and read authoritative manifest values back from the APK.
+      #
+      # Legacy `aapt dump badging` is intentionally avoided for metadata verification. On API 36 it
+      # can attempt to resolve framework drawable resources referenced by the manifest and return a
+      # false failure even when the package is valid. `apkanalyzer manifest` reads each field
+      # directly and therefore matches the information Android PackageManager consumes.
       - name: Verify debug APK signatures and metadata
         shell: bash
         run: |
+          set -euo pipefail
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "$APKANALYZER"
           checked=0
+
           for module in [0-9][0-9]-*; do
             apk=$(find "$module/build/outputs/apk/debug" -maxdepth 1 -name '*.apk' | head -n 1)
             test -n "$apk"
@@ -104,34 +112,44 @@ jobs:
             # Debug APK must be properly signed by the Android debug signing configuration.
             "$APKSIGNER" verify --verbose --print-certs "$apk" >/dev/null
 
-            # Verify the values that Android PackageManager will actually see after installation.
-            badging=$("$AAPT" dump badging "$apk" | head -n 1)
-            echo "$badging" | grep -F "versionCode='$ANDROID_VERSION_CODE'" >/dev/null
-            echo "$badging" | grep -F "versionName='$ANDROID_VERSION_NAME'" >/dev/null
+            # Convert folder number (01..78) to the expected stable applicationId suffix.
+            module_number=${module%%-*}
+            expected_package="com.asteam.appcollection.p${module_number}"
+
+            # Verify exactly what PackageManager will see after installation.
+            test "$("$APKANALYZER" manifest application-id "$apk")" = "$expected_package"
+            test "$("$APKANALYZER" manifest version-code "$apk")" = "$ANDROID_VERSION_CODE"
+            test "$("$APKANALYZER" manifest version-name "$apk")" = "$ANDROID_VERSION_NAME"
 
             checked=$((checked + 1))
           done
-          echo "Verified signatures and metadata for $checked debug APKs"
+          echo "Verified signatures, package IDs and metadata for $checked debug APKs"
           test "$checked" -eq 78
 
-      # Verify metadata inside every unsigned release APK before it reaches the private signing stage.
+      # Verify authoritative manifest values inside every unsigned release APK before private signing.
       - name: Verify unsigned release APK metadata
         shell: bash
         run: |
-          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          set -euo pipefail
+          APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "$APKANALYZER"
           checked=0
+
           for module in [0-9][0-9]-*; do
             apk=$(find "$module/build/outputs/apk/release" -maxdepth 1 -name '*-unsigned.apk' | head -n 1)
             test -n "$apk"
             test -f "$apk"
 
-            badging=$("$AAPT" dump badging "$apk" | head -n 1)
-            echo "$badging" | grep -F "versionCode='$ANDROID_VERSION_CODE'" >/dev/null
-            echo "$badging" | grep -F "versionName='$ANDROID_VERSION_NAME'" >/dev/null
+            module_number=${module%%-*}
+            expected_package="com.asteam.appcollection.p${module_number}"
+
+            test "$("$APKANALYZER" manifest application-id "$apk")" = "$expected_package"
+            test "$("$APKANALYZER" manifest version-code "$apk")" = "$ANDROID_VERSION_CODE"
+            test "$("$APKANALYZER" manifest version-name "$apk")" = "$ANDROID_VERSION_NAME"
 
             checked=$((checked + 1))
           done
-          echo "Verified metadata for $checked unsigned release APKs"
+          echo "Verified package IDs and metadata for $checked unsigned release APKs"
           test "$checked" -eq 78
 
       # Collect debug APKs under predictable names. These are useful for developer QA only.
@@ -180,8 +198,9 @@ jobs:
           path: apk-release-unsigned-output/*.apk
           if-no-files-found: error
 
-      # Export only the official signing utilities needed by the private local signing step.
-      # No private key or password is included in this artifact.
+      # Export only official signing utilities needed by the private local signing step.
+      # aapt is retained in the utility artifact for generic Android inspection, but CI manifest
+      # verification above deliberately uses apkanalyzer for API-36-safe metadata reads.
       - name: Prepare Android signing tools
         shell: bash
         run: |
