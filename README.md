@@ -64,7 +64,7 @@ Linux / macOS:
 
 هر applicationId ثابت است: `com.asteam.appcollection.p01` تا `com.asteam.appcollection.p78`.
 
-CI هنگام Release مقدار جدید `versionCode` و `versionName` را به Build تزریق می‌کند و سپس با `aapt dump badging` مقدار واقعی داخل خود APK را دوباره کنترل می‌کند. این کار از تولید APK با نام جدید ولی metadata قدیمی جلوگیری می‌کند.
+CI هنگام Release مقدار جدید `versionCode` و `versionName` را به Build تزریق می‌کند و سپس با `apkanalyzer manifest` مقدار واقعی `applicationId`، `versionCode` و `versionName` را مستقیماً از Manifest داخل هر APK دوباره کنترل می‌کند. این روش از تولید APK با نام جدید ولی metadata قدیمی جلوگیری می‌کند و برخلاف `aapt dump badging` به resolve شدن drawableهای framework وابسته نیست.
 
 قواعد کامل Signing/Update: [SIGNING.md](SIGNING.md)
 
@@ -73,10 +73,10 @@ CI هنگام Release مقدار جدید `versionCode` و `versionName` را ب
 سه سطح اصلی کنترل وجود دارد:
 
 1. `.github/workflows/build-apks.yml`  
-   همه ۷۸ Debug و unsigned Release APK را Build می‌کند، تعداد خروجی‌ها را کنترل می‌کند، Debug signature را Verify می‌کند و version metadata واقعی همه APKها را می‌خواند.
+   همه ۷۸ Debug و unsigned Release APK را Build می‌کند، تعداد خروجی‌ها را کنترل می‌کند، Debug signature را Verify می‌کند و package/version metadata واقعی همه APKها را با `apkanalyzer` می‌خواند.
 
 2. `.github/workflows/build-test-host.yml`  
-   APK میزبان QA را می‌سازد و بررسی می‌کند هر ۷۸ `MainActivity` واقعاً داخل DEX نهایی وجود داشته باشند.
+   APK میزبان QA را می‌سازد، بررسی می‌کند هر ۷۸ `MainActivity` واقعاً داخل DEX نهایی وجود داشته باشند و package/version metadata خود Host را نیز مستقیم از Manifest کنترل می‌کند.
 
 3. `.github/workflows/emulator-smoke-test.yml`  
    Instrumentation test را روی Android Emulator اجرا می‌کند و هر ۷۸ Activity را یک بار Launch/Close می‌کند تا Crashهای زمان `onCreate` یا اولین lifecycle فقط پشت Build موفق پنهان نمانند.
