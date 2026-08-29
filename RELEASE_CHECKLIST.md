@@ -39,7 +39,9 @@
 - `applicationId` هیچ ماژول منتشرشده‌ای تغییر نکرده باشد.
 - versionCode از Release قبلی بزرگ‌تر باشد.
 - versionName مطابق Release موردنظر باشد.
-- `aapt dump badging` مقدار واقعی versionCode/versionName داخل تمام APKها را تأیید کند.
+- `apkanalyzer manifest application-id` package واقعی تمام APKها را تأیید کند.
+- `apkanalyzer manifest version-code` و `version-name` مقدار واقعی Version داخل تمام APKها را تأیید کنند.
+- برای metadata verification از `aapt dump badging` استفاده نشود؛ روی API 36 ممکن است resolve شدن resourceهای framework خطای کاذب ایجاد کند.
 
 ## 5. QA خودکار
 
