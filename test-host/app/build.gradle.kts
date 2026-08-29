@@ -13,10 +13,29 @@ android {
         minSdk = 23
         targetSdk = 36
 
-        // Local builds keep a small readable version. CI may inject a monotonically increasing
-        // releaseVersionCode so a newly built test host can update the previous installation.
-        versionCode = providers.gradleProperty("releaseVersionCode").orNull?.toIntOrNull() ?: 2
-        versionName = "1.0.1"
+        /*
+         * Keep readable local defaults while allowing CI to inject real release metadata.
+         * Android compares versionCode when deciding whether an APK can update an installed copy,
+         * so CI always supplies a monotonically increasing positive value for distributable builds.
+         */
+        versionCode = providers
+            .gradleProperty("releaseVersionCode")
+            .orNull
+            ?.toIntOrNull()
+            ?.takeIf { it > 0 }
+            ?: 2
+
+        /*
+         * versionName is the user-facing release label. Accepting it from the same release command
+         * keeps the 78-in-1 host aligned with the standalone collection instead of leaving an old
+         * hard-coded label in the About-software page or Android package metadata.
+         */
+        versionName = providers
+            .gradleProperty("releaseVersionName")
+            .orNull
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "1.0.1"
 
         // AndroidJUnitRunner executes the 78-screen launch smoke test on an emulator/device.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -124,7 +143,7 @@ dependencies {
     // Shared shell contains the common hamburger drawer, settings, about and contact UI.
     implementation(project(":shared-ui"))
 
-    // Current stable AndroidX Test components used only by emulator/device QA.
+    // Stable AndroidX Test components used only by emulator/device QA.
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test:core-ktx:1.7.0")
     androidTestImplementation("androidx.test.ext:junit-ktx:1.3.0")
