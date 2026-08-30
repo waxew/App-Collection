@@ -1,55 +1,36 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-  <!-- هسته مشترک Web Preview پروژه‌های AS Team روی GitHub Pages. -->
+  <!-- هاب مرکزی نسخه وب تمام پروژه‌های AS Team؛ فقط همین ریپو باید GitHub Pages فعال داشته باشد. -->
   <meta charset="utf-8">
-  <!-- نمایش صحیح در موبایل، تبلت و دسکتاپ. -->
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <!-- عنوان اولیه؛ بعداً براساس پروژه تغییر می‌کند. -->
-  <title>AS Team Web Preview</title>
-  <!-- رنگ نوار مرورگر در دستگاه‌های سازگار. -->
-  <meta name="theme-color" content="#101828">
+  <meta name="theme-color" content="#111827">
+  <title>AS Team | Web Projects</title>
   <style>
-    /* متغیرهای پایه Design System نسخه وب. */
-    :root{--bg:#f3f5f9;--surface:#fff;--surface2:#f8fafc;--text:#101828;--muted:#667085;--line:#e4e7ec;--accent:#6d5dfc;--accent2:#8b7fff;--ok:#12b76a;--shadow:0 18px 50px rgba(16,24,40,.10);--radius:24px}
-    /* تم تیره از طریق data-theme فعال می‌شود. */
-    [data-theme="dark"]{--bg:#0b1020;--surface:#111827;--surface2:#182132;--text:#f9fafb;--muted:#98a2b3;--line:#263244;--shadow:0 18px 50px rgba(0,0,0,.34)}
-    /* ریست حداقلی و فونت‌های سیستمی برای سرعت بالا. */
-    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh}button,input{font:inherit}button{cursor:pointer}
-    /* نوار اصلی بالای صفحه. */
-    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;justify-content:space-between;padding:14px 18px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:900}.logo{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;color:white;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 26px rgba(109,93,252,.28)}
-    .actions{display:flex;gap:8px;align-items:center}.iconbtn{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:14px;padding:10px 12px}
-    /* ظرف کلی صفحات. */
-    .wrap{width:min(1180px,calc(100% - 28px));margin:28px auto 60px}.hero{display:grid;grid-template-columns:1.3fr .7fr;gap:18px;align-items:stretch}.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-    .hero-main{padding:28px;overflow:hidden;position:relative}.hero-main:after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;left:-80px;top:-90px;background:radial-gradient(circle,rgba(109,93,252,.24),transparent 68%);pointer-events:none}.eyebrow{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--line);background:var(--surface2);padding:7px 11px;border-radius:999px;color:var(--muted);font-size:12px}.hero h1{margin:16px 0 8px;font-size:clamp(25px,4vw,44px);line-height:1.25}.hero p{color:var(--muted);line-height:2;margin:0}.stats{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{padding:17px;background:var(--surface2);border:1px solid var(--line);border-radius:18px}.stat b{display:block;font-size:22px}.stat span{font-size:12px;color:var(--muted)}
-    /* کنترل جستجو و فیلتر داشبورد. */
-    .toolbar{margin:18px 0;display:flex;gap:10px;flex-wrap:wrap}.search{flex:1;min-width:230px;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:13px 15px;border-radius:16px;outline:none}.chip{border:1px solid var(--line);background:var(--surface);color:var(--text);padding:10px 14px;border-radius:999px}.chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-    /* کارت‌های پروژه در داشبورد مرکزی. */
-    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{display:flex;flex-direction:column;gap:12px;padding:19px;text-decoration:none;color:inherit;transition:.2s transform,.2s border-color;background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:0 8px 26px rgba(16,24,40,.04)}.card:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.appicon{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:21px}.card h3{margin:0;font-size:16px}.card p{margin:0;color:var(--muted);font-size:13px;line-height:1.8}.badge{font-size:11px;padding:6px 9px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--muted)}
-    /* پوسته شبیه موبایل برای پیش‌نمایش یک پروژه. */
-    .preview-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}.phone{width:min(100%,430px);margin:auto;border:8px solid #171a22;border-radius:38px;background:var(--surface);box-shadow:0 28px 70px rgba(16,24,40,.22);overflow:hidden;min-height:680px}.phonebar{display:flex;justify-content:space-between;align-items:center;padding:17px 18px 12px;border-bottom:1px solid var(--line)}.phone-title{font-weight:900}.phone-sub{display:block;color:var(--muted);font-size:11px;margin-top:3px}.phone-body{padding:16px}.welcome{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-radius:22px;padding:19px;box-shadow:0 14px 35px rgba(109,93,252,.25)}.welcome h2{margin:0 0 6px;font-size:20px}.welcome p{margin:0;opacity:.9;line-height:1.8;font-size:12px}.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}.feature{border:1px solid var(--line);background:var(--surface2);color:var(--text);border-radius:18px;padding:15px;text-align:right;min-height:98px}.feature b{display:block;margin:8px 0 4px}.feature span{color:var(--muted);font-size:11px}.feature.active{outline:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}.bottomnav{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);margin-top:17px}.bottomnav button{border:0;background:transparent;color:var(--muted);padding:13px 5px;font-size:11px}.bottomnav button.active{color:var(--accent);font-weight:900}
-    /* پنل توضیحات کنار پیش‌نمایش. */
-    .side{padding:22px}.side h2{margin:0 0 6px}.side p{color:var(--muted);line-height:1.9;font-size:13px}.side-list{display:grid;gap:9px;margin-top:15px}.side-item{display:flex;justify-content:space-between;gap:10px;padding:12px 13px;border:1px solid var(--line);border-radius:15px;background:var(--surface2)}.side-item span{color:var(--muted);font-size:12px}.primary{width:100%;border:0;border-radius:15px;padding:13px 16px;background:var(--accent);color:#fff;font-weight:900;margin-top:12px}.secondary{width:100%;border:1px solid var(--line);border-radius:15px;padding:13px 16px;background:var(--surface);color:var(--text);font-weight:800;margin-top:8px}
-    /* پیام خالی و فوتر. */
-    .empty{padding:35px;text-align:center;color:var(--muted)}footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px;line-height:1.9}
-    /* واکنش‌گرایی برای عرض‌های کوچک‌تر. */
-    @media(max-width:900px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.preview-layout{grid-template-columns:1fr}.side{order:-1}}
-    @media(max-width:560px){.wrap{width:min(100% - 18px,1180px);margin-top:14px}.grid{grid-template-columns:1fr}.hero-main{padding:21px}.stats{padding:14px}.phone{border-width:5px;border-radius:30px;min-height:630px}.topbar{padding:10px 12px}.brand small{display:none}}
+    /* Design System مشترک نسخه وب؛ بدون کتابخانه خارجی تا GitHub Pages سریع و پایدار بماند. */
+    :root{--bg:#f3f5f8;--surface:#fff;--surface2:#f8fafc;--text:#101828;--muted:#667085;--line:#e4e7ec;--accent:#6956e8;--accent2:#8d7ff5;--shadow:0 18px 48px rgba(16,24,40,.10)}
+    [data-theme="dark"]{--bg:#090f1d;--surface:#111827;--surface2:#182132;--text:#f9fafb;--muted:#98a2b3;--line:#263244;--shadow:0 18px 48px rgba(0,0,0,.34)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif}button,input{font:inherit}button{cursor:pointer}
+    .top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px)}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:900}.logo{width:40px;height:40px;display:grid;place-items:center;border-radius:14px;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 28px rgba(105,86,232,.26)}
+    .top-actions{display:flex;gap:8px}.iconbtn{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:13px;padding:9px 12px}
+    .wrap{width:min(1180px,calc(100% - 28px));margin:26px auto 60px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
+    .hero{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}.hero-main{padding:27px}.hero h1{font-size:clamp(26px,4vw,44px);margin:12px 0 8px}.hero p{margin:0;color:var(--muted);line-height:2}.pill{display:inline-flex;padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface2);color:var(--muted);font-size:12px}.stats{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{padding:16px;border:1px solid var(--line);background:var(--surface2);border-radius:18px}.stat b{display:block;font-size:22px}.stat span{font-size:12px;color:var(--muted)}
+    .toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:16px 0}.search{flex:1;min-width:220px;border:1px solid var(--line);border-radius:15px;background:var(--surface);color:var(--text);padding:12px 14px;outline:none}.chip{border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--text);padding:9px 13px}.chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.card{display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid var(--line);border-radius:21px;background:var(--surface);color:inherit;text-decoration:none;transition:.18s transform,.18s border-color}.card:hover{transform:translateY(-3px);border-color:var(--accent)}.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.appicon{width:44px;height:44px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:20px}.badge{font-size:11px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:var(--surface2);color:var(--muted)}.card h3{margin:0;font-size:16px}.card p{margin:0;color:var(--muted);line-height:1.8;font-size:12px}
+    .preview{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}.side{padding:22px}.side h1{margin:10px 0 6px;font-size:28px}.side p{color:var(--muted);font-size:13px;line-height:1.9}.list{display:grid;gap:8px;margin-top:14px}.row{display:flex;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface2)}.row span{color:var(--muted);font-size:11px}.primary,.secondary{width:100%;padding:12px 14px;border-radius:14px;font-weight:800;margin-top:9px}.primary{border:0;background:var(--accent);color:#fff}.secondary{border:1px solid var(--line);background:var(--surface);color:var(--text)}
+    .phone{width:min(100%,430px);margin:auto;overflow:hidden;min-height:650px;border:7px solid #171a22;border-radius:36px;background:var(--surface);box-shadow:0 28px 70px rgba(16,24,40,.22)}.phonebar{display:flex;justify-content:space-between;align-items:center;padding:16px 17px 12px;border-bottom:1px solid var(--line)}.phonebar b{display:block}.phonebar small{color:var(--muted)}.phonebody{padding:15px}.welcome{padding:18px;border-radius:20px;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 14px 34px rgba(105,86,232,.23)}.welcome h2{margin:0 0 6px;font-size:20px}.welcome p{margin:0;line-height:1.8;font-size:12px;opacity:.92}.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.feature{min-height:94px;padding:14px;text-align:right;border:1px solid var(--line);border-radius:17px;background:var(--surface2);color:var(--text)}.feature.active{outline:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}.feature b{display:block;margin:7px 0 4px}.feature span{font-size:11px;color:var(--muted)}.bottom{display:grid;grid-template-columns:repeat(4,1fr);margin-top:15px;border-top:1px solid var(--line)}.bottom button{border:0;background:transparent;color:var(--muted);padding:13px 4px;font-size:11px}.bottom button.active{color:var(--accent);font-weight:900}.empty{grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)}footer{text-align:center;color:var(--muted);font-size:11px;line-height:1.9;margin-top:24px}
+    @media(max-width:900px){.hero,.preview{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.side{order:-1}}
+    @media(max-width:560px){.wrap{width:calc(100% - 18px);margin-top:13px}.grid{grid-template-columns:1fr}.hero-main{padding:20px}.stats{padding:12px}.top{padding:9px 11px}.brand small{display:none}.phone{border-width:5px;border-radius:29px;min-height:610px}}
   </style>
 </head>
 <body>
-  <!-- نوار بالا: نام محصول و کنترل تم. -->
-  <header class="topbar">
-    <div class="brand"><div class="logo">AS</div><div>AS Team <small style="color:var(--muted);font-weight:400">Web Preview</small></div></div>
-    <div class="actions"><button class="iconbtn" id="homeBtn" title="همه پروژه‌ها">پروژه‌ها</button><button class="iconbtn" id="themeBtn" title="تغییر تم">◐</button></div>
-  </header>
-  <!-- محتوای صفحه توسط JavaScript براساس پارامتر project ساخته می‌شود. -->
-  <main class="wrap" id="app"></main>
+  <!-- نوار بالا برای بازگشت به هاب و تغییر تم. -->
+  <header class="top"><div class="brand"><div class="logo">AS</div><div>AS Team <small style="color:var(--muted);font-weight:400">Web Preview</small></div></div><div class="top-actions"><button id="home" class="iconbtn">پروژه‌ها</button><button id="theme" class="iconbtn" title="تغییر تم">◐</button></div></header>
+  <main id="app" class="wrap"></main>
   <script>
-    // فهرست پروژه‌های اصلی که باید از طریق GitHub Pages قابل پیش‌نمایش باشند.
-    const projects=[
-      // اپلیکیشن‌های عمومی و کسب‌وکاری.
+    // Registry مرکزی: تمام پروژه‌های اصلی Android App و AS Academy در یک GitHub Pages نمایش داده می‌شوند.
+    const data=[
       ['App-TarikhYar','تاریخ‌یار','app',['تاریخ شمسی','تبدیل تاریخ','مناسبت‌ها','یادآوری']],
       ['App-HesabYar','حسابیار','app',['درصد و تخفیف','سود و افزایش قیمت','تاریخچه محاسبات','ابزارهای مالی']],
       ['App-MDFchi','MDFچی','app',['محاسبات کابینت','لیست برش','متراژ MDF','قیمت پروژه']],
@@ -59,7 +40,7 @@
       ['App-TelegramBotStore','Telegram Bot Store','app',['محصولات','سفارش‌ها','اشتراک','مدیریت ربات']],
       ['App-FactorYar','فاکتوریار','app',['فاکتور','مشتری‌ها','کالا و خدمات','خروجی و اشتراک']],
       ['App-WaterMark','WaterMark','app',['واترمارک متن','واترمارک تصویر','پردازش گروهی','خروجی']],
-      ['App-TabdilYar','تبدیل‌یار','app',['تبدیل واحد','ارز و عدد','ابزارهای سریع','تاریخچه']],
+      ['App-TabdilYar','تبدیل‌یار','app',['تبدیل واحد','ابزارهای سریع','محاسبه','تاریخچه']],
       ['App-KhayatYar','خیاط‌یار','app',['اندازه‌گیری','الگو','مصرف پارچه','پروژه‌ها']],
       ['App-NaghashYar','نقاش‌یار','app',['متراژ رنگ','مصالح','برآورد هزینه','پروژه‌ها']],
       ['App-KashiYar','کاشی‌یار','app',['متراژ کاشی','تعداد موردنیاز','پرت','برآورد هزینه']],
@@ -75,9 +56,7 @@
       ['AS-StorageBox','StorageBox','app',['فایل‌ها','پوشه‌ها','اشتراک امن','سطح دسترسی']],
       ['App-Hesabdar','حسابدار','app',['حسابداری','فاکتور','خزانه','گزارش‌ها']],
       ['App-Bot-maneger','Bot Manager','app',['ربات‌ها','وضعیت سرویس','دستورات','کاربران']],
-      // پروژه مجموعه نمونه‌های اندرویدی؛ همین صفحه نقش هاب آن را هم دارد.
-      ['App-Collection','App Collection','hub',['پروژه‌ها','نمونه‌ها','پیش‌نمایش وب','مستندات']],
-      // دوره‌های AS Academy.
+      ['App-Collection','App Collection','app',['نمونه پروژه‌ها','ابزار توسعه','Web Preview','مستندات']],
       ['AS-Academy-Core','Academy Core','academy',['هسته مشترک','Navigation','Progress','Content Engine']],
       ['AS-Academy-Basic','Basic','academy',['مبانی مشترک','الگوریتم','حل مسئله','پروژه']],
       ['AS-Academy-Kotlin','Kotlin','academy',['مبانی','مقدماتی','پیشرفته','تخصصی']],
@@ -87,67 +66,42 @@
       ['AS-Academy-php','PHP','academy',['مبانی','Web و Forms','OOP','پروژه']],
       ['AS-Academy-C','C','academy',['مبانی','حافظه','Pointers','پروژه']],
       ['AS-Academy-Cplusplus','C++','academy',['مبانی','OOP','STL','پروژه']],
-      ['AS-Academy-Csharp','C#','academy',['مبانی','OOP','LINQ/.NET','پروژه']],
+      ['AS-Academy-Csharp','C#','academy',['مبانی','OOP','.NET و LINQ','پروژه']],
       ['AS-Academy-HTML','HTML','academy',['ساختار سند','Semantic HTML','Forms','پروژه']],
-      ['AS-Academy-CSS','CSS','academy',['مبانی','Flexbox/Grid','Responsive','پروژه']],
-      ['-AS-Academy-LocalDB','Local DB','academy',['SQLite','Room','Migration','Backup/Restore']]
-    ];
-    // تبدیل آرایه بالا به ساختار قابل خواندن در رندر.
-    const registry=projects.map(([slug,title,type,features])=>({slug,title,type,features}));
-    // استخراج پروژه انتخاب‌شده از Query String؛ در نبود آن صفحه هاب نمایش داده می‌شود.
-    const params=new URLSearchParams(location.search);let current=params.get('project')||'';
-    // بازیابی تم قبلی برای حفظ تنظیم کاربر بین بازدیدها.
-    const savedTheme=localStorage.getItem('as-web-theme')||'light';document.documentElement.dataset.theme=savedTheme;
-    // تغییر تم و ذخیره تنظیم جدید در LocalStorage.
-    document.getElementById('themeBtn').onclick=()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;localStorage.setItem('as-web-theme',next)};
-    // بازگشت به هاب مرکزی بدون وابستگی به نام ریپوی فعلی.
-    document.getElementById('homeBtn').onclick=()=>{location.href='https://waxew.github.io/App-Collection/'};
-    // آیکون نمایشی هر نوع پروژه.
-    const iconFor=p=>p.type==='academy'?'⌘':p.slug==='AS-StorageBox'?'☁':'◇';
-    // آدرس GitHub Pages هر ریپو؛ برای App-Collection از Query استفاده می‌شود.
-    const pageUrl=p=>p.slug==='App-Collection'?`https://waxew.github.io/App-Collection/?project=${encodeURIComponent(p.slug)}`:`https://waxew.github.io/${p.slug}/`;
-    // آدرس سورس GitHub برای مشاهده مستقیم ریپو.
+      ['AS-Academy-CSS','CSS','academy',['مبانی','Flexbox و Grid','Responsive','پروژه']],
+      ['-AS-Academy-LocalDB','Local DB','academy',['SQLite','Room','Migration','Backup و Restore']]
+    ].map(([slug,title,type,features])=>({slug,title,type,features}));
+
+    // تمام لینک‌های پروژه عمداً روی هاب مرکزی می‌مانند؛ بنابراین has_pages=false در یک ریپوی فرعی باعث 404 نمی‌شود.
+    const centralUrl=p=>`https://waxew.github.io/App-Collection/?project=${encodeURIComponent(p.slug)}`;
     const repoUrl=p=>`https://github.com/waxew/${p.slug}`;
-    // رندر صفحه مرکزی همه پروژه‌ها.
+    const qs=new URLSearchParams(location.search);const project=qs.get('project')||'';
+
+    // تم کاربر در LocalStorage حفظ می‌شود.
+    document.documentElement.dataset.theme=localStorage.getItem('as-web-theme')||'light';
+    document.getElementById('theme').onclick=()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;localStorage.setItem('as-web-theme',next)};
+    document.getElementById('home').onclick=()=>location.href='https://waxew.github.io/App-Collection/';
+
     function renderHub(){
       document.title='AS Team | Web Projects';
-      document.getElementById('app').innerHTML=`
-        <section class="hero">
-          <div class="panel hero-main"><span class="eyebrow">● GitHub Pages فعال</span><h1>نسخه وب پروژه‌های AS Team</h1><p>این هاب برای مشاهده سریع UI و جریان اصلی پروژه‌ها بدون نیاز به نصب APK ساخته شده است. هر کارت، Web Preview همان ریپو را باز می‌کند.</p></div>
-          <div class="panel stats"><div class="stat"><b>${registry.length}</b><span>پروژه ثبت‌شده</span></div><div class="stat"><b>${registry.filter(x=>x.type==='academy').length}</b><span>دوره آموزشی</span></div><div class="stat"><b>${registry.filter(x=>x.type==='app').length}</b><span>اپلیکیشن</span></div><div class="stat"><b>RTL</b><span>نمایش فارسی Responsive</span></div></div>
-        </section>
-        <div class="toolbar"><input id="q" class="search" placeholder="جستجو بین پروژه‌ها…"><button class="chip active" data-filter="all">همه</button><button class="chip" data-filter="app">اپ‌ها</button><button class="chip" data-filter="academy">Academy</button></div>
-        <section class="grid" id="grid"></section>
-        <footer>AS Team Web Preview • GitHub Pages<br>هسته مشترک برای کاهش تکرار کد و یکسان نگه‌داشتن نسخه وب پروژه‌ها</footer>`;
-      const grid=document.getElementById('grid');let filter='all';
-      // بازسازی کارت‌ها با توجه به عبارت جستجو و نوع پروژه.
-      const draw=()=>{const q=document.getElementById('q').value.trim().toLowerCase();const rows=registry.filter(p=>(filter==='all'||p.type===filter)&&(p.slug.toLowerCase().includes(q)||p.title.toLowerCase().includes(q)||p.features.join(' ').toLowerCase().includes(q)));grid.innerHTML=rows.map(p=>`<a class="card" href="${pageUrl(p)}"><div class="card-head"><div class="appicon">${iconFor(p)}</div><span class="badge">${p.type==='academy'?'Academy':'Web Preview'}</span></div><h3>${p.title}</h3><p>${p.features.join(' • ')}</p></a>`).join('')||'<div class="panel empty">پروژه‌ای با این عبارت پیدا نشد.</div>'};
-      document.getElementById('q').oninput=draw;
-      document.querySelectorAll('[data-filter]').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('[data-filter]').forEach(x=>x.classList.remove('active'));btn.classList.add('active');filter=btn.dataset.filter;draw()});draw();
+      const apps=data.filter(x=>x.type==='app').length,academy=data.filter(x=>x.type==='academy').length;
+      app.innerHTML=`<section class="hero"><div class="panel hero-main"><span class="pill">GitHub Pages • Central Web Hub</span><h1>نسخه وب پروژه‌های AS Team</h1><p>همه پروژه‌ها از یک هسته مرکزی نمایش داده می‌شوند. این معماری باعث می‌شود حتی ریپوهایی که GitHub Pages اختصاصی ندارند، از همین هاب قابل مشاهده و تست باشند.</p></div><div class="panel stats"><div class="stat"><b>${data.length}</b><span>کل پروژه‌ها</span></div><div class="stat"><b>${apps}</b><span>اپلیکیشن</span></div><div class="stat"><b>${academy}</b><span>AS Academy</span></div><div class="stat"><b>RTL</b><span>Responsive Web</span></div></div></section><div class="toolbar"><input id="q" class="search" placeholder="جستجو بین پروژه‌ها…"><button class="chip active" data-f="all">همه</button><button class="chip" data-f="app">اپ‌ها</button><button class="chip" data-f="academy">Academy</button></div><section id="grid" class="grid"></section><footer>AS Team • Central GitHub Pages Web Preview<br>هر پروژه از طریق پارامتر project آدرس مستقل و قابل اشتراک دارد.</footer>`;
+      let filter='all';const grid=document.getElementById('grid');
+      const draw=()=>{const q=document.getElementById('q').value.trim().toLowerCase();const rows=data.filter(p=>(filter==='all'||p.type===filter)&&(p.slug.toLowerCase().includes(q)||p.title.toLowerCase().includes(q)||p.features.join(' ').toLowerCase().includes(q)));grid.innerHTML=rows.length?rows.map(p=>`<a class="card" href="?project=${encodeURIComponent(p.slug)}"><div class="card-head"><div class="appicon">${p.type==='academy'?'⌘':p.slug==='AS-StorageBox'?'☁':'◇'}</div><span class="badge">${p.type==='academy'?'Academy':'Web Preview'}</span></div><h3>${p.title}</h3><p>${p.features.join(' • ')}</p></a>`).join(''):'<div class="panel empty">نتیجه‌ای پیدا نشد.</div>'};
+      document.getElementById('q').oninput=draw;document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-f]').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.f;draw()});draw();
     }
-    // رندر پیش‌نمایش پروژه انتخاب‌شده در قالب موبایل.
+
     function renderProject(p){
       document.title=`${p.title} | Web Preview`;
       const academy=p.type==='academy';
-      const descriptions=academy?['درس ساختاریافته','مثال و کد','تمرین و Quiz','پروژه و Capstone']:p.features;
-      document.getElementById('app').innerHTML=`
-        <section class="preview-layout">
-          <div class="panel side"><span class="eyebrow">Web Preview • ${p.slug}</span><h2>${p.title}</h2><p>${academy?'پیش‌نمایش رابط دوره آموزشی AS Academy با ساختار مبانی تا تخصصی، درس، تمرین، آزمون و پروژه.':'پیش‌نمایش وب برای بررسی سریع رابط و جریان اصلی اپ بدون نصب APK.'}</p><div class="side-list">${p.features.map((x,i)=>`<div class="side-item"><b>${x}</b><span>${i+1}/${p.features.length}</span></div>`).join('')}</div><button class="primary" id="openRepo">مشاهده سورس در GitHub</button><button class="secondary" id="copyUrl">کپی لینک نسخه وب</button></div>
-          <div class="phone" aria-label="پیش نمایش موبایل"><div class="phonebar"><div><span class="phone-title">${p.title}</span><span class="phone-sub">AS Team • Web Preview</span></div><span>☰</span></div><div class="phone-body"><div class="welcome"><h2>${academy?'مسیر یادگیری شما':'خوش آمدید'}</h2><p>${academy?'درس‌ها را از مبانی شروع کنید و تا سطح تخصصی و پروژه نهایی ادامه دهید.':'این نسخه برای تست سریع ظاهر، چیدمان و ناوبری اصلی پروژه در مرورگر است.'}</p></div><input id="featureSearch" class="search" style="width:100%;margin-top:13px" placeholder="${academy?'جستجو در درس‌ها…':'جستجو در امکانات…'}"><div class="feature-grid" id="features"></div><div class="bottomnav"><button class="active">خانه</button><button>جستجو</button><button>${academy?'پیشرفت':'ذخیره‌ها'}</button><button>تنظیمات</button></div></div></div>
-        </section><footer>URL: ${pageUrl(p)}<br>نسخه وب برای Preview و QA است؛ قابلیت‌های وابسته به Android API در APK اصلی اجرا می‌شوند.</footer>`;
-      const box=document.getElementById('features');let selected=Number(localStorage.getItem(`as-selected-${p.slug}`)||0);
-      // رسم امکانات/سطوح و حفظ مورد انتخاب‌شده برای تست تعامل ساده.
-      const drawFeatures=()=>{const q=document.getElementById('featureSearch').value.trim().toLowerCase();const items=descriptions.map((name,i)=>({name,i})).filter(x=>x.name.toLowerCase().includes(q));box.innerHTML=items.map(x=>`<button class="feature ${x.i===selected?'active':''}" data-i="${x.i}"><span>${academy?'مرحله':'بخش'} ${x.i+1}</span><b>${x.name}</b><span>${academy?'درس + مثال + تمرین + آزمون':'ورود به پیش‌نمایش بخش'}</span></button>`).join('')||'<div class="empty">نتیجه‌ای پیدا نشد.</div>';box.querySelectorAll('[data-i]').forEach(btn=>btn.onclick=()=>{selected=Number(btn.dataset.i);localStorage.setItem(`as-selected-${p.slug}`,selected);drawFeatures()})};
-      document.getElementById('featureSearch').oninput=drawFeatures;drawFeatures();
-      // دکمه‌های ناوبری پایین برای نمایش تعامل بدون وابستگی به Android Runtime.
-      document.querySelectorAll('.bottomnav button').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.bottomnav button').forEach(x=>x.classList.remove('active'));btn.classList.add('active')});
-      // باز کردن ریپوی سورس در تب جدید.
-      document.getElementById('openRepo').onclick=()=>window.open(repoUrl(p),'_blank','noopener');
-      // کپی آدرس نسخه وب برای تست روی دستگاه دیگر.
-      document.getElementById('copyUrl').onclick=async()=>{try{await navigator.clipboard.writeText(pageUrl(p));const b=document.getElementById('copyUrl');const old=b.textContent;b.textContent='لینک کپی شد ✓';setTimeout(()=>b.textContent=old,1400)}catch{location.href=pageUrl(p)}};
+      app.innerHTML=`<section class="preview"><div class="phone"><div class="phonebar"><div><b>${p.title}</b><small>AS Team • Web Preview</small></div><span>☰</span></div><div class="phonebody"><div class="welcome"><h2>${academy?'مسیر یادگیری شما':'خوش آمدید'}</h2><p>${academy?'نمای دوره از مبانی تا تخصصی؛ درس، مثال، تمرین، آزمون و پروژه در این پوسته قابل توسعه است.':'این نسخه برای بررسی سریع ظاهر، ناوبری و ساختار اصلی اپ در مرورگر ساخته شده است.'}</p></div><input id="fq" class="search" style="width:100%;margin-top:12px" placeholder="${academy?'جستجو در درس‌ها…':'جستجو در امکانات…'}"><div id="features" class="feature-grid"></div><div class="bottom"><button class="active">خانه</button><button>جستجو</button><button>${academy?'پیشرفت':'ذخیره‌ها'}</button><button>تنظیمات</button></div></div></div><aside class="panel side"><span class="pill">${p.slug}</span><h1>${p.title}</h1><p>${academy?'Web Preview دوره آموزشی AS Academy.':'Web Preview پروژه اندرویدی؛ قابلیت‌های وابسته به Android API در APK اصلی اجرا می‌شوند.'}</p><div class="list">${p.features.map((x,i)=>`<div class="row"><b>${x}</b><span>${i+1}/${p.features.length}</span></div>`).join('')}</div><button id="repo" class="primary">مشاهده سورس در GitHub</button><button id="copy" class="secondary">کپی لینک همین نسخه وب</button></aside></section><footer>${centralUrl(p)}</footer>`;
+      const features=document.getElementById('features');let selected=Number(localStorage.getItem(`as-web-selected-${p.slug}`)||0);
+      const draw=()=>{const q=document.getElementById('fq').value.trim().toLowerCase();const rows=p.features.map((name,i)=>({name,i})).filter(x=>x.name.toLowerCase().includes(q));features.innerHTML=rows.length?rows.map(x=>`<button class="feature ${x.i===selected?'active':''}" data-i="${x.i}"><span>${academy?'مرحله':'بخش'} ${x.i+1}</span><b>${x.name}</b><span>${academy?'درس + مثال + تمرین + آزمون':'ورود به بخش'}</span></button>`).join(''):'<div class="empty">نتیجه‌ای پیدا نشد.</div>';features.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{selected=Number(b.dataset.i);localStorage.setItem(`as-web-selected-${p.slug}`,selected);draw()})};
+      document.getElementById('fq').oninput=draw;draw();document.querySelectorAll('.bottom button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.bottom button').forEach(x=>x.classList.remove('active'));b.classList.add('active')});document.getElementById('repo').onclick=()=>window.open(repoUrl(p),'_blank','noopener');document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(centralUrl(p));const b=document.getElementById('copy');b.textContent='لینک کپی شد ✓';setTimeout(()=>b.textContent='کپی لینک همین نسخه وب',1400)}catch{location.href=centralUrl(p)}};
     }
-    // انتخاب حالت نهایی رندر: هاب یا یک پروژه مشخص.
-    const selectedProject=registry.find(p=>p.slug.toLowerCase()===current.toLowerCase());if(current&&selectedProject){renderProject(selectedProject)}else{renderHub()}
+
+    // اگر project معتبر باشد پیش‌نمایش همان پروژه باز می‌شود؛ در غیر این صورت هاب نمایش داده می‌شود.
+    const selected=data.find(x=>x.slug.toLowerCase()===project.toLowerCase());selected?renderProject(selected):renderHub();
   </script>
 </body>
 </html>
