@@ -17,7 +17,9 @@ permissions:
 jobs:
   emulator-smoke-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The JUnit sweep itself has a three-minute timeout. This job timeout additionally bounds
+    # emulator image provisioning/boot so a broken runner cannot occupy CI indefinitely.
+    timeout-minutes: 25
 
     steps:
       # Use the exact repository revision that triggered the validation run.
@@ -57,10 +59,9 @@ jobs:
       # Install both APKs explicitly with adb and invoke AndroidJUnitRunner directly.
       #
       # Why not `connectedDebugAndroidTest` here?
-      # The previous run failed inside AGP/UTP's DdmlibAndroidDeviceController while installing the
-      # test package, before JUnit reached a single Activity. Manual adb install + `am instrument`
-      # removes that extra device-provider layer while executing the exact same compiled
-      # AndroidJUnitRunner/ActivityScenario test on the emulator.
+      # The original run failed inside AGP/UTP's device-controller layer before JUnit reached a
+      # single Activity. Manual adb install + `am instrument` removes that extra layer while running
+      # the same compiled AndroidJUnitRunner/ActivityScenario test on the emulator.
       - name: Launch all 78 activities through direct instrumentation
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -71,7 +72,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            set -euo pipefail
+            set -eu
             adb wait-for-device
             test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
             adb shell getprop ro.build.version.sdk
@@ -90,33 +91,54 @@ jobs:
             adb install -r "$TEST_APK"
 
             # Resolve the runner from PackageManager rather than hard-coding an implementation
-            # detail. The expected test package is still asserted so a packaging regression fails.
-            adb shell pm list instrumentation | tr -d '\r' | tee test-host/emulator-instrumentations.txt
-            INSTRUMENTATION=$(adb shell pm list instrumentation | tr -d '\r' | \
-              sed -n 's/^instrumentation:\([^ ]*com\.asteam\.appcollection\.test\.test[^ ]*\).*/\1/p' | head -n 1)
+            # detail. Normalize CR characters because adb shell output may use device line endings.
+            adb shell pm list instrumentation | tr -d '\r' > test-host/emulator-instrumentations.txt
+            cat test-host/emulator-instrumentations.txt
+            INSTRUMENTATION=$(sed -n \
+              's/^instrumentation:\([^ ]*com\.asteam\.appcollection\.test\.test[^ ]*\).*/\1/p' \
+              test-host/emulator-instrumentations.txt | head -n 1)
 
             if [ -z "$INSTRUMENTATION" ]; then
               echo "ERROR: AndroidJUnitRunner for com.asteam.appcollection.test.test was not registered."
               exit 1
             fi
 
-            # Capture logcat from a clean buffer so any Activity crash is available even if the
+            # Capture logcat from a clean buffer so any Activity crash is available even when the
             # instrumentation summary itself is short.
             adb logcat -c
+
+            # Do NOT pipe am-instrument through tee here. Some action shells do not expose Bash's
+            # PIPESTATUS consistently, which can turn a valid Android result into a shell failure or
+            # hide the real runner exit status. Redirect directly, save $?, then print the file.
             set +e
-            adb shell am instrument -w -r "$INSTRUMENTATION" | tee test-host/emulator-instrumentation.txt
-            INSTRUMENTATION_EXIT=${PIPESTATUS[0]}
+            adb shell am instrument -w -r "$INSTRUMENTATION" \
+              > test-host/emulator-instrumentation.txt 2>&1
+            INSTRUMENTATION_EXIT=$?
             set -e
+
+            # Normalize device line endings before validating JUnit's final result line.
+            tr -d '\r' < test-host/emulator-instrumentation.txt \
+              > test-host/emulator-instrumentation-normalized.txt
+            cat test-host/emulator-instrumentation-normalized.txt
             adb logcat -d > test-host/emulator-logcat.txt
 
-            # `am instrument` can occasionally return shell success while JUnit reports failures in
-            # text, so require both process success and JUnit's explicit one-test success summary.
+            # A nonzero runner status is always a hard failure.
             test "$INSTRUMENTATION_EXIT" -eq 0
-            grep -Eq '^OK \(1 test\)$' test-host/emulator-instrumentation.txt
+
+            # AndroidJUnitRunner can occasionally return shell success while the textual JUnit
+            # summary reports a failure. Require the explicit successful one-test summary as well.
+            grep -Eq '^OK \(1 test\)[[:space:]]*$' \
+              test-host/emulator-instrumentation-normalized.txt
+
+            # The bounded test writes START/DONE markers for every numbered Activity. Independently
+            # require all 78 DONE markers so an accidentally shortened test cannot masquerade as OK.
+            DONE_COUNT=$(grep -c 'AppCollectionSmoke.*DONE p' test-host/emulator-logcat.txt || true)
+            echo "Completed Activity smoke markers: $DONE_COUNT"
+            test "$DONE_COUNT" -eq 78
 
       # Preserve both Gradle reports and direct-device diagnostics regardless of success/failure.
       # Future failures therefore identify whether the issue was install, runner registration,
-      # Activity lifecycle, assertion, or an Android process crash.
+      # Activity lifecycle, assertion, timeout, or an Android process crash.
       - name: Upload emulator test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -126,6 +148,7 @@ jobs:
             test-host/app/build/reports/androidTests/**
             test-host/app/build/outputs/androidTest-results/**
             test-host/emulator-instrumentation.txt
+            test-host/emulator-instrumentation-normalized.txt
             test-host/emulator-instrumentations.txt
             test-host/emulator-logcat.txt
           if-no-files-found: warn
