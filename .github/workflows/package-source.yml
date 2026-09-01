@@ -1,5 +1,6 @@
 # Package the exact tracked repository revision into a clean source archive for delivery/recovery.
-# This revision is the final-delivery package after API-36-safe manifest verification was adopted.
+# This delivery revision includes the bounded/logged 78-Activity runtime QA test; this workflow-only
+# commit does not alter application or androidTest bytecode and exists to regenerate the source ZIP.
 name: Package final source
 
 on:
