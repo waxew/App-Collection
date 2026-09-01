@@ -11,6 +11,13 @@ on:
       - '.github/workflows/emulator-smoke-test.yml'
   workflow_dispatch:
 
+# Only the newest smoke test for a branch is useful. When a corrected workflow/test is pushed while
+# an older emulator run is still booting/executing, cancel that stale run so it cannot block the
+# newest QA revision or consume the only available runner slot.
+concurrency:
+  group: emulator-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
