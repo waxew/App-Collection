@@ -35,11 +35,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # The application still compiles/targets stable Android 16 / API 36. Runtime smoke testing is
-      # intentionally performed on API 35 because the previous API-36 GitHub AVD was connected by
-      # adb but reported as an unknown/incompatible API to AGP's connected-device test runner. The
-      # JUnit report proved no Activity test had started. API 35 remains fully compatible with this
-      # minSdk=23 application and provides a mature, deterministic CI runtime for launch/crash QA.
+      # The application compiles/targets stable Android 16 / API 36. Runtime smoke testing uses the
+      # mature API-35 Google APIs emulator because the test only needs a compatible Android runtime;
+      # compile/target compatibility continues to be checked independently by the API-36 builds.
       - name: Install Android 16 build SDK
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
@@ -49,20 +47,21 @@ jobs:
         with:
           gradle-version: '9.5.0'
 
-      # Compile androidTest before emulator boot so dependency or direct-class-reference errors
-      # fail quickly and are reported separately from device/runtime failures.
-      #
-      # The official Gradle Wrapper belongs to the repository root, while test-host is a nested
-      # standalone Gradle build with its own settings.gradle.kts. `../gradlew -p .` deliberately
-      # combines the root wrapper binary/version with the current test-host project directory.
+      # Compile the application and instrumentation APKs before emulator boot. Direct class
+      # references inside AllActivitiesSmokeTest make a missing/renamed p01..p78 Activity a compile
+      # failure before any device time is spent.
       - name: Compile instrumentation test APK
         working-directory: test-host
         run: ../gradlew -p . :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
 
-      # ActivityScenario opens each of the 78 real Activities, waits for initial lifecycle delivery,
-      # and closes it before moving to the next. The diagnostic getprop/adb commands run first so a
-      # future infrastructure problem is distinguishable from an application crash in the CI log.
-      - name: Launch all 78 activities on stable Android emulator
+      # Install both APKs explicitly with adb and invoke AndroidJUnitRunner directly.
+      #
+      # Why not `connectedDebugAndroidTest` here?
+      # The previous run failed inside AGP/UTP's DdmlibAndroidDeviceController while installing the
+      # test package, before JUnit reached a single Activity. Manual adb install + `am instrument`
+      # removes that extra device-provider layer while executing the exact same compiled
+      # AndroidJUnitRunner/ActivityScenario test on the emulator.
+      - name: Launch all 78 activities through direct instrumentation
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -72,16 +71,52 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
+            set -euo pipefail
             adb wait-for-device
-            adb shell getprop sys.boot_completed
+            test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
             adb shell getprop ro.build.version.sdk
             adb shell getprop ro.product.cpu.abi
             adb devices -l
-            cd test-host
-            ../gradlew -p . :app:connectedDebugAndroidTest --no-daemon --stacktrace --info
 
-      # Preserve JUnit/XML and HTML reports even when a future Activity fails, making the exact
-      # numbered sample and stack trace available instead of a generic "could not run" message.
+            APP_APK="test-host/app/build/outputs/apk/debug/app-debug.apk"
+            TEST_APK="test-host/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+            test -f "$APP_APK"
+            test -f "$TEST_APK"
+
+            # Fresh installation prevents stale package/test state from affecting the smoke run.
+            adb uninstall com.asteam.appcollection.test >/dev/null 2>&1 || true
+            adb uninstall com.asteam.appcollection.test.test >/dev/null 2>&1 || true
+            adb install -r "$APP_APK"
+            adb install -r "$TEST_APK"
+
+            # Resolve the runner from PackageManager rather than hard-coding an implementation
+            # detail. The expected test package is still asserted so a packaging regression fails.
+            adb shell pm list instrumentation | tr -d '\r' | tee test-host/emulator-instrumentations.txt
+            INSTRUMENTATION=$(adb shell pm list instrumentation | tr -d '\r' | \
+              sed -n 's/^instrumentation:\([^ ]*com\.asteam\.appcollection\.test\.test[^ ]*\).*/\1/p' | head -n 1)
+
+            if [ -z "$INSTRUMENTATION" ]; then
+              echo "ERROR: AndroidJUnitRunner for com.asteam.appcollection.test.test was not registered."
+              exit 1
+            fi
+
+            # Capture logcat from a clean buffer so any Activity crash is available even if the
+            # instrumentation summary itself is short.
+            adb logcat -c
+            set +e
+            adb shell am instrument -w -r "$INSTRUMENTATION" | tee test-host/emulator-instrumentation.txt
+            INSTRUMENTATION_EXIT=${PIPESTATUS[0]}
+            set -e
+            adb logcat -d > test-host/emulator-logcat.txt
+
+            # `am instrument` can occasionally return shell success while JUnit reports failures in
+            # text, so require both process success and JUnit's explicit one-test success summary.
+            test "$INSTRUMENTATION_EXIT" -eq 0
+            grep -Eq '^OK \(1 test\)$' test-host/emulator-instrumentation.txt
+
+      # Preserve both Gradle reports and direct-device diagnostics regardless of success/failure.
+      # Future failures therefore identify whether the issue was install, runner registration,
+      # Activity lifecycle, assertion, or an Android process crash.
       - name: Upload emulator test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -90,4 +125,7 @@ jobs:
           path: |
             test-host/app/build/reports/androidTests/**
             test-host/app/build/outputs/androidTest-results/**
+            test-host/emulator-instrumentation.txt
+            test-host/emulator-instrumentations.txt
+            test-host/emulator-logcat.txt
           if-no-files-found: warn
